@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth2 Callback</title>
+</head>
+<body>
+  <script>
+    function getParameterByName(name, url = window.location.href) {
+      name = name.replace(/[\[\]]/g, '\\$&');
+      const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+      const results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    function saveCognitoCookies() {
+      const code = getParameterByName('code');
+      if (code) {
+        // Replace with your Cognito domain prefix, region, app client ID, and callback URL
+        const COGNITO_DOMAIN_PREFIX = 'your-cognito-domain-prefix';
+        const COGNITO_REGION = 'your-cognito-region';
+        const COGNITO_APP_CLIENT_ID = 'your-cognito-app-client-id';
+        const CALLBACK_URL = 'https://example.com/callback';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `https://${COGNITO_DOMAIN_PREFIX}.auth.${COGNITO_REGION}.amazoncognito.com/oauth2/token`, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+              const data = JSON.parse(xhr.responseText);
+
+              const now = new Date();
+              const expiresAt = new Date(now.getTime() + data.expires_in * 1000);
+
+              document.cookie = `CognitoIdentityServiceProvider.ACCESS-TOKEN=${data.access_token}; path=/; expires=${expiresAt.toUTCString()}`;
+              document.cookie = `CognitoIdentityServiceProvider.ID-TOKEN=${data.id_token}; path=/; expires=${expiresAt.toUTCString()}`;
+              document.cookie = `CognitoIdentityServiceProvider.REFRESH-TOKEN=${data.refresh_token}; path=/`;
+
+              window.location.href = '/';
+            } else {
+              console.error('Error exchanging code for tokens');
+              // Handle error, e.g., show an error message or redirect to an error page
+            }
+          }
+        };
+        xhr.send(`grant_type=authorization_code&client_id=${COGNITO_APP_CLIENT_ID}&code=${code}&redirect_uri=${CALLBACK_URL}`);
+      } else {
+        console.error('Code parameter missing from URL');
+        // Handle error, e.g., show an error message or redirect to an error page
+      }
+    }
+
+    saveCognitoCookies();
+  </script>
+</body>
+</html>

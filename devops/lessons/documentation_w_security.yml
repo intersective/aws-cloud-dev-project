@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: MyDocusaurusUserPool
+      MfaConfiguration: OFF
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      AliasAttributes:
+       - email
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: MyDocusaurusUserPoolClient
+      GenerateSecret: False
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - https://example.com/callback
+      LogoutURLs:
+        - https://example.com/logout
+      AllowedOAuthFlowsUserPoolClient: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+  
+  LambdaEdgeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaEdgeFunctionRole.Arn
+      Runtime: nodejs12.x
+      Code:
+        ZipFile: |- # Add your Lambda@Edge function code here
+          exports.handler = (event, context, callback) => {
+            // Add authentication and authorization logic using Amazon Cognito
+          };
+  LambdaEdgeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaEdgeFunctionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-docs-bucket
+
+  WAFWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: MyWAFWebACL
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: WAFMetrics
+
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+      Enable: true  
+
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt S3Bucket.DomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !Ref LambdaEdgeFunction.Version
+          CachedMethods:
+            Quantity: 2
+            Items:
+              - HEAD
+              - GET
+          AllowedMethods:
+            Quantity: 2
+            Items:
+              - HEAD
+              - GET
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        Logging:
+          Bucket: !Sub "my-logs-bucket.s3.amazonaws.com"
+          IncludeCookies: false
+        WebACLId: !Ref WAFWebACL
+
+  LambdaFunctionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Lambda function error alarm"
+      Namespace: "AWS/Lambda"
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LambdaEdgeFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: "1"
+      Threshold: "1"
+      AlarmActions:
+        - !Ref SnsTopic
+      AlarmComparisonOperator: GreaterThanOrEqualToThreshold
+
+
+  ApiGatewayErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "API Gateway error alarm"
+      Namespace: "AWS/ApiGateway"
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref ServerlessRestApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: "1"
+      Threshold: "1"
+      AlarmActions:
+        - !Ref SnsTopic
+      AlarmComparisonOperator: GreaterThanOrEqualToThreshold
+
+  SnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "Error Alarms Topic"
+
+
+Outputs:
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+  CloudFrontDistributionDomain:
+    Description: "CloudFront Distribution Domain Name"
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+
+
+ 
+        # ...
+
+
+  
+
+
+ 
+
+
+Outputs:
+  # ... (CognitoUserPoolId, CloudFrontDistributionDomain)
+```

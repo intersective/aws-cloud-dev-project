@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: MyDocusaurusUserPool
+      MfaConfiguration: OFF
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      AliasAttributes:
+       - email
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: MyDocusaurusUserPoolClient
+      GenerateSecret: False
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - https://example.com/callback
+      LogoutURLs:
+        - https://example.com/logout
+      AllowedOAuthFlowsUserPoolClient: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+  
+  LambdaEdgeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaEdgeFunctionRole.Arn
+      Runtime: nodejs12.x
+      Code:
+        ZipFile: |- # Add your Lambda@Edge function code here
+          exports.handler = (event, context, callback) => {
+            // Add authentication and authorization logic using Amazon Cognito
+          };
+  LambdaEdgeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaEdgeFunctionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-docs-bucket
+
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt S3Bucket.DomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !Ref LambdaEdgeFunction.Version
+          CachedMethods:
+            Quantity: 2
+            Items:
+              - HEAD
+              - GET
+          AllowedMethods:
+            Quantity: 2
+            Items:
+              - HEAD
+              - GET
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+
+Outputs:
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+  CloudFrontDistributionDomain:
+    Description: "CloudFront Distribution Domain Name"
+    Value: !GetAtt CloudFrontDistribution.DomainName

@@ -1,0 +1,69 @@
+# The post_build phase includes creating or updating a CloudFormation stack for
+# the CloudFront distribution, Cognito User Pool, and Lambda@Edge function. The
+# cloudfront-cognito-lambdaedge.yml file should contain the necessary
+# CloudFormation configuration for creating these resources. 
+#
+# The CloudFront distribution should be configured to use the S3 bucket hosting
+# the Docusaurus documentation as its origin, and the Lambda@Edge function
+# should be deployed in the Viewer Request event to handle authentication and
+# authorization. 
+#
+# You can refer to this [AWS Blog post](https://aws.amazon.com/blogs/networking-and-content-delivery/authorizationedge-how-to-use-lambdaedge-and-json-web-tokens-to-enhance-web-application-security/)
+# for more details on how to set up CloudFront, Cognito, and Lambda@Edge for
+# securing access to your documentation.
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+    commands:
+      - echo "Installing dependencies..."
+      - npm ci
+      - echo "Installing Docusaurus..."
+      - cd docs
+      - npm ci
+      - cd ..
+
+  pre_build:
+    commands:
+      - echo "Linting and running tests..."
+      - npm run lint
+      - npm test
+
+  build:
+    commands:
+      - echo "Building the Node.js API service..."
+      - npm run build
+      - echo "Creating deployment package..."
+      - zip -r deployment-package.zip dist/ node_modules/
+      - echo "Building the Docusaurus documentation..."
+      - cd docs
+      - npm run build
+      - cd ..
+
+  post_build:
+    commands:
+      - echo "Post-build steps..."
+      - echo "Uploading deployment package to S3..."
+      - aws s3 cp deployment-package.zip s3://my-bucket/deployment-packages/
+      - echo "Uploading Docusaurus documentation to S3..."
+      - aws s3 sync docs/build/ s3://my-docs-bucket/
+      - echo "Deploying Lambda function and API Gateway using AWS SAM..."
+      - aws cloudformation package --template-file template.yml --output-template-file packaged-template.yml --s3-bucket my-bucket
+      - aws cloudformation deploy --template-file packaged-template.yml --stack-name my-lambda-stack --capabilities CAPABILITY_NAMED_IAM
+      - echo "Deploying CloudFront, Cognito, and Lambda@Edge resources using AWS CloudFormation..."
+      - aws cloudformation package --template-file cloudfront-cognito-lambdaedge.yml --output-template-file packaged-cloudfront-cognito-lambdaedge.yml --s3-bucket my-bucket
+      - aws cloudformation deploy --template-file packaged-cloudfront-cognito-lambdaedge.yml --stack-name my-cloudfront-cognito-lambdaedge-stack --capabilities CAPABILITY_NAMED_IAM
+
+artifacts:
+  files:
+    - template.yml
+    - cloudfront-cognito-lambdaedge.yml
+  discard-paths: yes
+
+cache:
+  paths:
+    - node_modules/**/*
+    - docs/node_modules/**/*
