@@ -35,11 +35,12 @@ phases:
   build:
     commands:
       - echo "Building the Node.js API service..."
+      - cd src
       - npm run build
       - echo "Creating deployment package..."
       - zip -r deployment-package.zip dist/ node_modules/
       - echo "Building the Docusaurus documentation..."
-      - cd docs
+      - cd ../docs
       - npm run build
       - cd ..
 
