@@ -2,7 +2,8 @@
     "name": "cloud-developer-project",
     "version": "1.0.0",
     "description": "DynamoDB CRUD API using API Gateway and AWS Lambda",
-    "main": "api.js",
+    "main": "dist/api.js",
+    "type": "module",
     "scripts": {
         "build": "tsc --build",
         "clean": "tsc --build --clean",

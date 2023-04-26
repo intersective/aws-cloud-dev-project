@@ -12,14 +12,21 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 const db = new DynamoDBClient({});
-  
+const responseTemplate = {
+    "statusCode": 200,
+    "isBase64Encoded": false,
+    "headers": {
+        "content-type": "application/json"
+    },
+    "body": "{}"
+}
 /**
  * Get a post by postId.
  * @param event - The event object containing the postId.
  * @returns The response object with the post data.
  */
 const getPost = async (event: any) => {
-    const response = { statusCode: 200, body: '' };
+    const response = Object.assign({}, responseTemplate);
 
     try {
         const params = {
@@ -30,17 +37,17 @@ const getPost = async (event: any) => {
 
         console.log({ Item });
         response.body = JSON.stringify({
-        message: "Successfully retrieved post.",
-        data: Item ? unmarshall(Item) : {},
-        rawData: Item,
+            message: "Successfully retrieved post.",
+            data: Item ? unmarshall(Item) : {},
+            rawData: Item,
         });
     } catch (e) {
         console.error(e);
         response.statusCode = 500;
         response.body = JSON.stringify({
-        message: "Failed to get post.",
-        errorMsg: e.message,
-        errorStack: e.stack,
+            message: "Failed to get post.",
+            errorMsg: e.message,
+            errorStack: e.stack,
         });
     }
 
@@ -53,7 +60,7 @@ const getPost = async (event: any) => {
  * @returns The response object with the creation result.
  */
 const createPost = async (event: any) => {
-    const response = { statusCode: 200, body: '' };
+    const response = Object.assign({}, responseTemplate);
 
     try {
         const body = JSON.parse(event.body);
@@ -64,16 +71,16 @@ const createPost = async (event: any) => {
         const createResult = await db.send(new PutItemCommand(params));
 
         response.body = JSON.stringify({
-        message: "Successfully created post.",
-        createResult,
+            message: "Successfully created post.",
+            createResult,
         });
     } catch (e) {
         console.error(e);
         response.statusCode = 500;
         response.body = JSON.stringify({
-        message: "Failed to create post.",
-        errorMsg: e.message,
-        errorStack: e.stack,
+            message: "Failed to create post.",
+            errorMsg: e.message,
+            errorStack: e.stack,
         });
     }
 
@@ -86,7 +93,7 @@ const createPost = async (event: any) => {
  * @returns The response object with the update result.
  */
 const updatePost = async (event: any) => {
-    const response = { statusCode: 200, body: '' };
+    const response = Object.assign({}, responseTemplate);
   
     try {
       const body = JSON.parse(event.body);
@@ -139,7 +146,7 @@ const updatePost = async (event: any) => {
  * @returns The response object with the deletion result.
  */
 const deletePost = async (event: any) => {
-    const response = { statusCode: 200, body: '' };
+    const response = Object.assign({}, responseTemplate);
   
     try {
       const params = {
@@ -170,7 +177,7 @@ const deletePost = async (event: any) => {
  * @returns The response object with all the posts.
  */
 const getAllPosts = async () => {
-    const response = { statusCode: 200, body: '' };
+    const response = Object.assign({}, responseTemplate);
   
     try {
       const { Items } = await db.send(
@@ -195,7 +202,7 @@ const getAllPosts = async () => {
     return response;
 };
 
-export {
+module.exports = {
     getPost,
     createPost,
     updatePost,

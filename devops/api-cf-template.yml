@@ -5,7 +5,26 @@ Parameters:
   S3BUCKET:
     Description: 'Required. Bucket for artifacts'
     Type: 'String'
+ 
 Resources:
+##########################################################################
+#   DynamoDB                                                            #
+##########################################################################
+  DynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: postId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: postId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+     
+##########################################################################
+#   Lambda Function                                                      #
+##########################################################################
+
   APIGetPostsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -20,6 +39,24 @@ Resources:
           Properties:
             Path: posts
             Method: GET
+            Integration: LAMBDA
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoTable
+
+  APIGetPostsPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIGetPostsFunction
+        - Arn
+      Principal: "apigateway.amazonaws.com"
 
   APIGetPostFunction:
     Type: AWS::Serverless::Function
@@ -35,6 +72,24 @@ Resources:
           Properties:
             Path: post/{postId}
             Method: GET
+            Integration: LAMBDA
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoTable
+
+  APIGetPostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIGetPostFunction
+        - Arn      
+      Principal: "apigateway.amazonaws.com"
 
   APICreatePostFunction:
     Type: AWS::Serverless::Function
@@ -50,6 +105,24 @@ Resources:
           Properties:
             Path: post
             Method: POST
+            Integration: LAMBDA
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
+
+  APICreatePostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      Principal: "apigateway.amazonaws.com"
+      FunctionName: !GetAtt
+        - APICreatePostFunction
+        - Arn
 
   APIUpdatePostFunction:
     Type: AWS::Serverless::Function
@@ -65,6 +138,25 @@ Resources:
           Properties:
             Path: post/{postId}
             Method: PUT
+            Integration: LAMBDA 
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
+
+  APIUpdatePostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIUpdatePostFunction
+        - Arn
+      Principal: "apigateway.amazonaws.com"
+      # SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*"
 
   APIDeletePostFunction:
     Type: AWS::Serverless::Function
@@ -80,8 +172,36 @@ Resources:
           Properties:
             Path: post/{postId}
             Method: DELETE
+            Integration: LAMBDA
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
 
+  APIDeletePostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIDeletePostFunction
+        - Arn
+      Principal: "apigateway.amazonaws.com"
+
+
+
+##########################################################################
+#   OUTPUTS                                                              #
+##########################################################################
+  
 Outputs:
   ApiGatewayUrl:
     Description: "API Gateway base URL"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+  DynamoDbTable:
+    Value: !Ref DynamoTable
+    Description: DynamoDb Table 
