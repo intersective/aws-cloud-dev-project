@@ -93,6 +93,30 @@ paths:
         - postdatabase_auth:
             - write:posts
             - read:posts
+  /posts:
+    get:
+      tags:
+        - post
+      summary: Get All Posts
+      description: Returns all post
+      operationId: getPosts
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Posts'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Posts'
+        '400':
+          description: No posts
+      security:
+        - api_key: []
+        - postdatabase_auth:
+            - write:posts
+            - read:posts
   /post/{postId}:
     get:
       tags:
@@ -187,6 +211,13 @@ paths:
             - read:posts
 components:
   schemas:
+   Posts:
+    required:
+      type: array
+      items:
+        $ref: #/components/schemas/Post
+      xml:
+        name: posts  
     Post:
       required:
         - name

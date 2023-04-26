@@ -17,51 +17,52 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      nodejs: 12
+      nodejs: 16
     commands:
       - echo "Installing dependencies..."
-      - npm ci
+      - npm install
       - echo "Installing Docusaurus..."
       - cd docs
-      - npm ci
+      - npm install --omit=dev
       - cd ..
 
   pre_build:
     commands:
       - echo "Linting and running tests..."
       - npm run lint
-      - npm test
+      # - npm test # no tests in this repo yet... should add some!
 
   build:
     commands:
       - echo "Building the Node.js API service..."
-      - cd src
-      - npm run build
+      - rm -rf node_modules
+      - npm install --omit=dev
+      - npm run build --omit=dev
       - echo "Creating deployment package..."
       - zip -r deployment-package.zip dist/ node_modules/
-      - echo "Building the Docusaurus documentation..."
-      - cd ../docs
-      - npm run build
-      - cd ..
+      #- echo "Building the Docusaurus documentation..."
+      #- cd ../docs
+      #- npm run build --omit=dev
+      #- cd ..
 
   post_build:
     commands:
       - echo "Post-build steps..."
       - echo "Uploading deployment package to S3..."
-      - aws s3 cp deployment-package.zip s3://my-bucket/deployment-packages/
+      - aws s3 cp deployment-package.zip s3://$S3BUCKET/deployment-packages/
       - echo "Uploading Docusaurus documentation to S3..."
-      - aws s3 sync docs/build/ s3://my-docs-bucket/
+      - aws s3 sync docs/build/ s3://$S3BUCKET/docs/
       - echo "Deploying Lambda function and API Gateway using AWS SAM..."
-      - aws cloudformation package --template-file template.yml --output-template-file packaged-template.yml --s3-bucket my-bucket
-      - aws cloudformation deploy --template-file packaged-template.yml --stack-name my-lambda-stack --capabilities CAPABILITY_NAMED_IAM
-      - echo "Deploying CloudFront, Cognito, and Lambda@Edge resources using AWS CloudFormation..."
-      - aws cloudformation package --template-file cloudfront-cognito-lambdaedge.yml --output-template-file packaged-cloudfront-cognito-lambdaedge.yml --s3-bucket my-bucket
-      - aws cloudformation deploy --template-file packaged-cloudfront-cognito-lambdaedge.yml --stack-name my-cloudfront-cognito-lambdaedge-stack --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation package --template-file devops/api-cf-template.yml --output-template-file packaged-template.yml --s3-bucket $S3BUCKET --s3-prefix templates/
+      - aws cloudformation deploy --template-file packaged-template.yml --stack-name my-lambda-stack --capabilities CAPABILITY_NAMED_IAM --parameter-overrides S3BUCKET=$S3BUCKET
+      #- echo "Deploying CloudFront, Cognito, and Lambda@Edge resources using AWS CloudFormation..."
+      #- aws cloudformation package --template-file devops/cloudfront-cognito-lambdaedge.yml --output-template-file packaged-cloudfront-cognito-lambdaedge.yml --s3-bucket ${S3BUCKET}/templates/
+      #- aws cloudformation deploy --template-file packaged-cloudfront-cognito-lambdaedge.yml --stack-name my-cloudfront-cognito-lambdaedge-stack --capabilities CAPABILITY_NAMED_IAM
 
 artifacts:
   files:
-    - template.yml
-    - cloudfront-cognito-lambdaedge.yml
+    - devops/api-cf-template.yml
+    - devops/cloudfront-cognito-lambdaedge.yml
   discard-paths: yes
 
 cache:

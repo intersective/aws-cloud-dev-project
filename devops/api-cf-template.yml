@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A sample Node.js-based API service on AWS Lambda and API Gateway
+Parameters:
+  S3BUCKET:
+    Description: 'Required. Bucket for artifacts'
+    Type: 'String'
+Resources:
+  APIGetPostsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/deployment-package.zip
+      Handler: dist/api.getAllPosts
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: posts
+            Method: GET
+
+  APIGetPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/deployment-package.zip
+      Handler: dist/api.getPost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post/{postId}
+            Method: GET
+
+  APICreatePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/deployment-package.zip
+      Handler: dist/api.createPost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post
+            Method: POST
+
+  APIUpdatePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/deployment-package.zip
+      Handler: dist/api.updatePost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post/{postId}
+            Method: PUT
+
+  APIDeletePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/deployment-package.zip
+      Handler: dist/api.deletePost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post/{postId}
+            Method: DELETE
+
+Outputs:
+  ApiGatewayUrl:
+    Description: "API Gateway base URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
