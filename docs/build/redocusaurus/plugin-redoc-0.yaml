@@ -1,8 +1,7 @@
 openapi: 3.1.0
 info:
   title: Cloud Developer Project - OpenAPI 3.1
-  description: |-
-    This is a sample crud API for a user documentation system.
+  description: This is a sample crud API for a user documentation system.
   contact:
     email: support@practera.com
   license:
@@ -215,9 +214,9 @@ components:
       required:
         type: array
         items:
-          $ref: #/components/schemas/Post
+          $ref: null
         xml:
-          name: posts  
+          name: posts
     Post:
       required:
         - name

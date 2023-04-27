@@ -6,8 +6,8 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Practera Cloud Project',
-  tagline: 'Dinosaurs are cool',
+  title: 'AWS Cloud Project',
+  tagline: 'Documentation for a simple API',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
@@ -18,10 +18,10 @@ const config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
+  // organizationName: 'practera', // Usually your GitHub org/user name.
+  // projectName: 'clouddev', // Usually your repo name.
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
 
   // Even if you don't use internalization, you can use this field to set useful
@@ -38,8 +38,9 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarPath: require.resolve('./sidebars.js'),
+          sidebarPath: require.resolve('./sidebars.js')
         },
+        blog: false,
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
@@ -70,25 +71,19 @@ const config = {
       // Replace with your project's social card
       image: 'img/docusaurus-social-card.jpg',
       navbar: {
-        title: 'Practera Cloud Project',
+        title: 'AWS Cloud Project',
         logo: {
-          alt: 'Practera Cloud Project Logo',
+          alt: 'AWS Cloud Project Logo',
           src: 'img/logo.svg',
         },
         items: [
+          {to: '/api', label: 'API', position: 'left'},
           {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
             label: 'Tutorial',
-          },
-          {to: '/api', label: 'API', position: 'left'},
-          {to: '/my-custom-page', label: 'My custom page', position: 'left'},
-          {
-            href: 'https://github.com/intersective/aws-cloud-dev-project',
-            label: 'GitHub',
-            position: 'right',
-          },
+          }
         ],
       },
       footer: {
@@ -98,13 +93,13 @@ const config = {
             title: 'Docs',
             items: [
               {
-                label: 'Tutorial',
-                to: '/docs/intro',
-              },
-            ],
+                label: 'API',
+                to: '/api',
+              }
+            ]
           }
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Practera. Built with Docusaurus.`,
       },
       prism: {
         theme: lightCodeTheme,
