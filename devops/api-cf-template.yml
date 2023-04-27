@@ -39,7 +39,6 @@ Resources:
           Properties:
             Path: posts
             Method: GET
-            Integration: LAMBDA
       Environment:
         Variables:
           DYNAMODB_TABLE_NAME: !Ref DynamoTable
