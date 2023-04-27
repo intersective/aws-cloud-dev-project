@@ -65,8 +65,8 @@ const createPost = async (event: any) => {
     try {
         const body = JSON.parse(event.body);
         const params = {
-        TableName: process.env.DYNAMODB_TABLE_NAME,
-        Item: marshall(body || {}),
+            TableName: process.env.DYNAMODB_TABLE_NAME,
+            Item: marshall(body || {}),
         };
         const createResult = await db.send(new PutItemCommand(params));
 
