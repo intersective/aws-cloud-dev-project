@@ -1,0 +1,27 @@
+version: 0.2
+
+env:
+  variables:
+    S3_BUCKET: "<your-s3-bucket-name>"
+    CDN_DISTRIBUTION_ID: "<your-cloudfront-distribution-id>"
+    CUSTOM_USER_NAME: "sunil"
+
+phases:
+  install:
+    commands:
+      - npm install
+  pre_build:
+    commands:
+      - echo "$(date -u): Replacing 'there' with '$CUSTOM_USER_NAME' in my-custom-page.js"
+      - sed -i "s/there/$CUSTOM_USER_NAME/g" src/pages/my-custom-page.js
+      - cat src/pages/my-custom-page.js
+      - echo "$(date -u): Building the app with npm"
+      - npm run build
+  build:
+    commands:
+      - echo "$(date -u): Uploading build artifacts to S3 bucket $S3_BUCKET"
+      - aws s3 sync ./build s3://${S3_BUCKET} --delete
+  post_build:
+    commands:
+      - echo "$(date -u): Invalidating CloudFront cache for distribution $CDN_DISTRIBUTION_ID"
+      - aws cloudfront create-invalidation --distribution-id ${CDN_DISTRIBUTION_ID} --paths '/*'

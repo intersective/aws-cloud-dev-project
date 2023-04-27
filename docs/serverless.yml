@@ -1,0 +1,243 @@
+service: ${env:STACK_NAME}-${env:ROOTSTACK}-demo1
+frameworkVersion: '2'
+useDotenv: true
+enableLocalInstallationFallback: true
+
+
+provider:
+  logRetentionInDays: 365 # Set the default RetentionInDays for a CloudWatch LogGroup
+  name: aws
+  runtime: nodejs16.x
+  region: ${env:REGION}
+  stage: ${env:ENV}
+  deploymentBucket:
+    blockPublicAccess: true 
+    serverSideEncryption: AES256 
+    tags: 
+      StackName: ${env:STACK_NAME}
+      Env: ${env:ENV}
+      RootStack: ${env:ROOTSTACK}
+  stackTags: # Optional CF stack tags
+    StackName: ${env:STACK_NAME}
+    Env: ${env:ENV}
+    RootStack: ${env:ROOTSTACK}
+  tags: # Optional service wide function tags
+    StackName: ${env:STACK_NAME}
+    Env: ${env:ENV}
+    RootStack: ${env:ROOTSTACK}
+
+
+resources:
+  
+  Resources:
+    Demo1S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:DEMO1S3BUCKET}
+        BucketEncryption: 
+          ServerSideEncryptionConfiguration: 
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+        VersioningConfiguration:
+          Status: Enabled
+        LifecycleConfiguration:
+          Rules:
+          - AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+            Status: Enabled
+          - NoncurrentVersionExpirationInDays: 30
+            Status: Enabled
+
+
+    ## Specifying the policies to make sure all files inside the Bucket are avaialble to CloudFront
+    Demo1S3BucketPolicy:
+      DependsOn: [Demo1CloudFrontOriginAccessIdentity]
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: Demo1S3Bucket
+        PolicyDocument:
+          Statement:
+          - Sid: S3-Bucket-Accesible via CDN OAI only
+            Action: 's3:GetObject'
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${Demo1S3Bucket}/*'
+            Principal:
+              CanonicalUser: !GetAtt Demo1CloudFrontOriginAccessIdentity.S3CanonicalUserId 
+          - Sid: AllowSSLRequestsOnly # AWS Foundational Security Best Practices v1.0.0 S3.5
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+            - !Sub 'arn:aws:s3:::${Demo1S3Bucket}'
+            - !Sub 'arn:aws:s3:::${Demo1S3Bucket}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+
+    ## Specifying the CloudFront Origin Access Identity CDN Distribution to server your Web Application
+    Demo1CloudFrontOriginAccessIdentity:
+      Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: "Cloudfront Origin identity for ${env:DEMO1S3BUCKET}"
+
+    ## Specifying the CloudFront Distribution to server your Web Application
+    Demo1CloudFrontDistribution:
+      DependsOn: [Demo1CloudFrontSecurityHeaderResponse]
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          # Aliases:
+          #   - ${env:DEMO1S3BUCKET}
+          Comment: "Cloudfront Origin identity for ${env:DEMO1S3BUCKET}"
+          DefaultCacheBehavior:
+            AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            Compress: true
+            DefaultTTL: 3600 # in seconds
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              QueryString: false
+            MaxTTL: 86400 # in seconds
+            MinTTL: 60 # in seconds
+            TargetOriginId: ${env:DEMO1S3BUCKET}
+            ViewerProtocolPolicy: 'redirect-to-https'
+            ResponseHeadersPolicyId: !Ref Demo1CloudFrontSecurityHeaderResponse
+          DefaultRootObject: index.html
+          CustomErrorResponses:
+            - ErrorCode: 404
+              ResponseCode: 200
+              ResponsePagePath: /404.html
+            - ErrorCode: 403
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+          Enabled: true
+          HttpVersion: http2
+          IPV6Enabled: true
+          Origins:
+          - DomainName: !GetAtt 'Demo1S3Bucket.RegionalDomainName'
+            Id: ${env:DEMO1S3BUCKET}
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${Demo1CloudFrontOriginAccessIdentity}'
+          PriceClass: 'PriceClass_All'
+          ViewerCertificate:
+            CloudFrontDefaultCertificate: true
+            # SslSupportMethod: 'sni-only'
+
+
+    # Specifying the CloudFront Distribution Security Response Header
+    Demo1CloudFrontSecurityHeaderResponse:
+      Type: AWS::CloudFront::ResponseHeadersPolicy
+      Properties: 
+        ResponseHeadersPolicyConfig: 
+          Comment: "practera-security-headers-for-${env:DEMO1S3BUCKET}"
+          Name: "practera-security-headers-for-APPv2"
+          SecurityHeadersConfig: 
+            StrictTransportSecurity: 
+              AccessControlMaxAgeSec: 31536000
+              IncludeSubdomains: true
+              Override: true
+              Preload: true
+
+# Security Header Response CFN END
+
+
+
+    HTTPCode4XXTooHighAlarm:
+      Type: 'AWS::CloudWatch::Alarm'
+      Properties:
+        AlarmDescription: '${env:DEMO1S3BUCKET} - receives 4XX HTTP status codes from CDN'
+        Namespace: 'AWS/CloudFront'
+        MetricName: 4xxErrorRate
+        Statistic: Average
+        Period: 60
+        EvaluationPeriods: 3
+        ComparisonOperator: GreaterThanThreshold
+        Threshold: 3
+        AlarmActions:
+        - {'Fn::ImportValue': '${env:STACK_NAME}-ChatBotSNSTopicARN-${env:ENV}'}
+        Dimensions:
+        - Name: Region
+          Value: Global
+        - Name: DistributionId
+          Value: !Ref Demo1CloudFrontDistribution
+        TreatMissingData: notBreaching
+        Unit: Percent
+    
+    HTTPCode5XXTooHighAlarm:
+      Type: 'AWS::CloudWatch::Alarm'
+      Properties:
+        AlarmDescription: '${env:DEMO1S3BUCKET} - receives 5XX HTTP status codes from CDN'
+        Namespace: 'AWS/CloudFront'
+        MetricName: 5xxErrorRate
+        Statistic: Average
+        Period: 60
+        EvaluationPeriods: 3
+        ComparisonOperator: GreaterThanThreshold
+        Threshold: 3
+        AlarmActions:
+        - {'Fn::ImportValue': '${env:STACK_NAME}-ChatBotSNSTopicARN-${env:ENV}'}
+        Dimensions:
+        - Name: Region
+          Value: Global
+        - Name: DistributionId
+          Value: !Ref Demo1CloudFrontDistribution
+        TreatMissingData: notBreaching
+        Unit: Percent
+
+    HTTPCodeTotalErrorRateTooHighAlarm:
+      Type: 'AWS::CloudWatch::Alarm'
+      Properties:
+        AlarmDescription: '${env:DEMO1S3BUCKET} - receives Total Error Rate HTTP status codes from CDN'
+        Namespace: 'AWS/CloudFront'
+        MetricName: TotalErrorRate
+        Statistic: Average
+        Period: 60
+        EvaluationPeriods: 3
+        ComparisonOperator: GreaterThanThreshold
+        Threshold: 3
+        AlarmActions:
+        - {'Fn::ImportValue': '${env:STACK_NAME}-ChatBotSNSTopicARN-${env:ENV}'}
+        Dimensions:
+        - Name: Region
+          Value: Global
+        - Name: DistributionId
+          Value: !Ref Demo1CloudFrontDistribution
+        TreatMissingData: notBreaching
+        Unit: Percent
+
+
+  Outputs:
+    Demo1S3Bucket:
+      Description: 'Name of the S3 bucket storing the static files.'
+      Value: !Ref Demo1S3Bucket
+      Export:
+        Name: ${env:STACK_NAME}-Demo1S3Bucket-${env:ENV}
+
+    Demo1S3BucketURL:
+      Description: 'URL to static website.'
+      Value: https://${env:DEMO1S3BUCKET}
+      Export:
+        Name: ${env:STACK_NAME}-Demo1S3BucketURL-${env:ENV}
+
+    Demo1CloudFrontDistributionID:
+      Description: 'CloudFront distribution id'
+      Value: !Ref Demo1CloudFrontDistribution
+      Export:
+        Name: ${env:STACK_NAME}-Demo1CloudFrontDistributionID-${env:ENV}
+
+
+    Demo1CloudFrontDistributionOutput:
+      Value:
+        'Fn::GetAtt': [ Demo1CloudFrontDistribution, DomainName ]
+      Export:
+        Name: ${env:STACK_NAME}-Demo1CloudFrontDistributionOutput-${env:ENV}
+    

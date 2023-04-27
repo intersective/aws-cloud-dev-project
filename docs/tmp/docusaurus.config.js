@@ -39,29 +39,23 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
+          editUrl:
+            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+        },
+        blog: {
+          showReadingTime: true,
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
+          editUrl:
+            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
       }),
     ],
-    [
-        'redocusaurus',
-        {
-          // Plugin Options for loading OpenAPI files
-          specs: [
-            {
-              spec: 'api/openapi.yaml',
-              route: '/api/',
-            },
-          ],
-          // Theme Options for modifying how redoc renders them
-          theme: {
-            // Change with your site colors
-            primaryColor: '#1890ff',
-          },
-        },
-      ],
   ],
 
   themeConfig:
@@ -82,10 +76,10 @@ const config = {
             position: 'left',
             label: 'Tutorial',
           },
-          {to: '/api', label: 'API', position: 'left'},
+          {to: '/blog', label: 'Blog', position: 'left'},
           {to: '/my-custom-page', label: 'My custom page', position: 'left'},
           {
-            href: 'https://github.com/intersective/aws-cloud-dev-project',
+            href: 'https://github.com/facebook/docusaurus',
             label: 'GitHub',
             position: 'right',
           },
@@ -102,7 +96,37 @@ const config = {
                 to: '/docs/intro',
               },
             ],
-          }
+          },
+          {
+            title: 'Community',
+            items: [
+              {
+                label: 'Stack Overflow',
+                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+              },
+              {
+                label: 'Discord',
+                href: 'https://discordapp.com/invite/docusaurus',
+              },
+              {
+                label: 'Twitter',
+                href: 'https://twitter.com/docusaurus',
+              },
+            ],
+          },
+          {
+            title: 'More',
+            items: [
+              {
+                label: 'Blog',
+                to: '/blog',
+              },
+              {
+                label: 'GitHub',
+                href: 'https://github.com/facebook/docusaurus',
+              },
+            ],
+          },
         ],
         copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
       },
