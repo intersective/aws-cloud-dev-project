@@ -1,6 +1,9 @@
-// Code modified from @jacksonyuan-yt 
-// https://github.com/jacksonyuan-yt/dynamodb-crud-api-gateway
-
+/**
+ * A simple node.js API for use in an AWS cloud project
+ *
+ * Code modified from @jacksonyuan-yt 
+ * https://github.com/jacksonyuan-yt/dynamodb-crud-api-gateway
+ */
 import {
     DynamoDBClient,
     GetItemCommand,
@@ -20,6 +23,7 @@ const responseTemplate = {
     },
     "body": "{}"
 }
+
 /**
  * Get a post by postId.
  * @param event - The event object containing the postId.

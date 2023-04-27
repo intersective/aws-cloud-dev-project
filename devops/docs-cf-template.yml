@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A sample Node.js-based API service on AWS Lambda and API Gateway
+Parameters:
+  S3BUCKET:
+    Description: 'Required. Bucket for artifacts'
+    Type: 'String'
+  StackName:
+    Description: 'Required. Name of CF Stack'
+    Type: 'String'
+
+
+Resources:
+  DocsBucketPolicy:
+    DependsOn: [DocsCloudFrontOriginAccessIdentity]
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Sub ${S3BUCKET}
+      PolicyDocument:
+        Statement:
+        - Sid: S3-Bucket-Accesible via CDN OAI only
+          Action: 's3:GetObject'
+          Effect: Allow
+          Resource: !Sub 'arn:aws:s3:::${S3BUCKET}/docs/*'
+          Principal:
+            CanonicalUser: !GetAtt DocsCloudFrontOriginAccessIdentity.S3CanonicalUserId 
+        - Sid: AllowSSLRequestsOnly
+          Effect: Deny
+          Principal: '*'
+          Action: 's3:*'
+          Resource:
+          - !Sub 'arn:aws:s3:::${S3BUCKET}'
+          - !Sub 'arn:aws:s3:::${S3BUCKET}/docs/*'
+          Condition:
+            Bool:
+              'aws:SecureTransport': false
+
+  DocsCloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub '${StackName}-oai'
+
+  DocsCloudFrontDistribution:
+    DependsOn: [MyCloudFrontSecurityHeaderResponse]
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+        - DomainName: !GetAtt '${S3BUCKET}.RegionalDomainName'
+          Id: !Sub '${StackName}-website'
+          S3OriginConfig:
+            OriginAccessIdentity: ""
+        Comment: !Sub '${StackName}-distribution'
+        DefaultCacheBehavior:
+          AllowedMethods:
+          - GET
+          - HEAD
+          - OPTIONS
+          CachedMethods:
+          - GET
+          - HEAD
+          - OPTIONS
+          Compress: true
+          DefaultTTL: 3600
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          MaxTTL: 86400
+          MinTTL: 60
+          TargetOriginId: !Sub '${StackName}-website'
+          ViewerProtocolPolicy: 'redirect-to-https'
+          ResponseHeadersPolicyId: !Ref DocsCloudFrontSecurityHeaderResponse
+        DefaultRootObject: docs/index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: 'PriceClass_All'
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  # Specifying the CloudFront Distribution Security Response Header
+  DocsCloudFrontSecurityHeaderResponse:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties: 
+      ResponseHeadersPolicyConfig: 
+        Comment: !Sub '${StackName}-website'
+        Name: !Sub '${StackName}-website'
+        SecurityHeadersConfig: 
+          StrictTransportSecurity: 
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+            Preload: true
+
+
