@@ -84,7 +84,7 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Sub "${S3BUCKET}"
-        Key: lambdaedge/authorizer.js
+        Key: lambdaedge/authorizer.zip
       Handler: index.handler
       Role: !GetAtt LambdaEdgeFunctionRole.Arn
       Runtime: nodejs16.x
@@ -171,10 +171,8 @@ Resources:
         Comment: !Sub '${StackName}-distribution'
         LambdaFunctionAssociations:
           - EventType: viewer-request
-            LambdaFunctionARN: !Join
-              - ':'
-              - - !GetAtt [LambdaEdgeFunction, Arn]
-                - !GetAtt [LambdaEdgeFunctionVersion, Version]
+            LambdaFunctionARN: 
+              Ref LambdaEdgeFunctionVersion
         DefaultCacheBehavior:
           AllowedMethods:
           - GET
