@@ -73,9 +73,10 @@ const createPost = async (event: any) => {
             Item: marshall(body || {}),
         };
         const createResult = await db.send(new PutItemCommand(params));
-
+        response.statusCode = 201;
         response.body = JSON.stringify({
             message: "Successfully created post.",
+            data: body,
             createResult,
         });
     } catch (e) {

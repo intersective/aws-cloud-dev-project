@@ -2,27 +2,23 @@ const AWS = require('aws-sdk');
 const cognito = new AWS.CognitoIdentityServiceProvider();
 const secretsManager = new AWS.SecretsManager();
 
-
 let cognitoDetails;
-
 
 exports.handler = async (event) => {
     if (!cognitoDetails) {
-        cognitoDetails = await getCognitoDetailsFromSecretsManager();
+        cognitoDetails = { clientId: process.env.COGNITO_CLIENTID, userPoolDomain: process.env.COGNITO_USERPOOLDOMAIN}
+        //cognitoDetails = await getCognitoDetailsFromSecretsManager();
     }
-
 
     const request = event.Records[0].cf.request;
     const headers = request.headers;
     const domainName = headers.host[0].value;
-    const callbackPath = '/oauth2/idpresponse'; // The callback path for the Cognito Hosted UI
-
+    const callbackPath = '/static/oauth2/idpresponse'; // The callback path for the Cognito Hosted UI
 
     // Allow requests to the callback URL without authentication
     if (request.uri === callbackPath) {
         return request;
     }
-
 
     // Check for the Cognito tokens in cookies
     const cookies = headers.cookie && headers.cookie[0] ? headers.cookie[0].value : '';
@@ -76,18 +72,11 @@ exports.handler = async (event) => {
 
 
 async function getCognitoDetailsFromSecretsManager() {
-    // Replace the value below with your AWS Secrets Manager secret name
-    const secretName = 'YOUR_SECRET_NAME';
 
-
-    const data = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
-
-
+    const data = await secretsManager.getSecretValue({ SecretId: SECRET_NAME }).promise();
     if (data && data.SecretString) {
         return JSON.parse(data.SecretString);
     }
-
-
     throw new Error('Failed to retrieve Cognito details from Secrets Manager');
 }
 
@@ -130,24 +119,16 @@ function getCognitoHostedUIURL(domainName, cognitoDetails) {
 
 
 async function validateCognitoIdToken(idToken, cognitoDetails) {
-    const userPoolId = cognitoDetails.userPoolId;
-
-
+    // const userPoolId = cognitoDetails.userPoolId;
     const params = {
         AccessToken: idToken,
     };
-
-
-    try {
-        const result = await cognito.getUser(params).promise();
-        if (result && result.UserAttributes) {
-            // You can also extract additional user information from the result.UserAttributes array if needed
-            return result.Username;
-        }
-    } catch (error) {
-        throw error;
+  
+    const result = await cognito.getUser(params).promise();
+    if (result && result.UserAttributes) {
+        // You can also extract additional user information from the result.UserAttributes array if needed
+        return result.Username;
     }
-
 
     return null;
 }

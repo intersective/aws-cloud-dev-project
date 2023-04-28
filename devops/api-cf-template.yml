@@ -30,7 +30,7 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/deployment-package.zip
+        Key: deployment-packages/api.zip
       Handler: dist/api.getAllPosts
       Runtime: nodejs16.x
       Events:
@@ -62,7 +62,7 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/deployment-package.zip
+        Key: deployment-packages/api.zip
       Handler: dist/api.getPost
       Runtime: nodejs16.x
       Events:
@@ -94,7 +94,7 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/deployment-package.zip
+        Key: deployment-packages/api.zip
       Handler: dist/api.createPost
       Runtime: nodejs16.x
       Events:
@@ -126,7 +126,7 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/deployment-package.zip
+        Key: deployment-packages/api.zip
       Handler: dist/api.updatePost
       Runtime: nodejs16.x
       Events:
@@ -159,7 +159,7 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/deployment-package.zip
+        Key: deployment-packages/api.zip
       Handler: dist/api.deletePost
       Runtime: nodejs16.x
       Events:
