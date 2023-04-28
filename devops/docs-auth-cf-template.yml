@@ -28,6 +28,107 @@ Resources:
         - NoncurrentVersionExpirationInDays: 30
           Status: Enabled
 
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: MyDocusaurusUserPool
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+
+  CognitoUserPoolClient:
+    DependsOn: [CognitoUserPool]
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: MyDocusaurusUserPoolClient
+      GenerateSecret: False
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - !Sub "https://${StackName}-auth/callback"
+      LogoutURLs:
+        - !Sub "https://${StackName}-auth/logout"
+      AllowedOAuthFlowsUserPoolClient: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  CognitoUserPoolDomain: 
+    Type: AWS::Cognito::UserPoolDomain 
+    Properties:
+      UserPoolId: !Ref CognitoUserPool 
+      Domain: !Sub "${StackName}-auth"
+
+
+  LambdaEdgeFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: [CognitoUserPoolClient, LambdaEdgeFunctionRole]
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: lambdaedge/authorizer.js
+      Handler: index.handler
+      Role: !GetAtt LambdaEdgeFunctionRole.Arn
+      Runtime: nodejs16.x
+      Environment:
+        Variables:
+          COGNITO_CLIENTID: !Ref CognitoUserPoolClient
+          COGNITO_USERPOOLDOMAIN: !Sub "${StackName}-auth"
+
+  LambdaEdgeFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !GetAtt LambdaEdgeFunction.Arn
+
+  LambdaEdgeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaEdgeFunctionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+
+  DocsCloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub '${StackName}-oai'
+
   DocsBucketPolicy:
     DependsOn: [DocsCloudFrontOriginAccessIdentity]
     Type: AWS::S3::BucketPolicy
@@ -52,12 +153,6 @@ Resources:
             Bool:
               'aws:SecureTransport': false
 
-  DocsCloudFrontOriginAccessIdentity:
-    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
-    Properties:
-      CloudFrontOriginAccessIdentityConfig:
-        Comment: !Sub '${StackName}-oai'
-
   DocsCloudFrontDistribution:
     DependsOn: [LambdaEdgeFunction, DocsCloudFrontOriginAccessIdentity, DocsCloudFrontSecurityHeaderResponse]
     Type: AWS::CloudFront::Distribution
@@ -76,7 +171,10 @@ Resources:
         Comment: !Sub '${StackName}-distribution'
         LambdaFunctionAssociations:
           - EventType: viewer-request
-            LambdaFunctionARN: !Ref LambdaEdgeFunction.Version
+            LambdaFunctionARN: !Join
+              - ':'
+              - - !GetAtt [LambdaEdgeFunction, Arn]
+                - !GetAtt [LambdaEdgeFunctionVersion, Version]
         DefaultCacheBehavior:
           AllowedMethods:
           - GET
@@ -119,103 +217,10 @@ Resources:
             Override: true
             Preload: true
 
-  CognitoUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: MyDocusaurusUserPool
-      MfaConfiguration: OFF
-      UsernameAttributes:
-        - email
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireUppercase: False
-          RequireLowercase: False
-          RequireNumbers: False
-          RequireSymbols: False
-      AliasAttributes:
-       - email
-      Schema:
-       - Name: email
-         Required: true
-         Mutable: true
-         AttributeDataType: String
-
-  CognitoUserPoolClient:
-    DependsOn: [CognitoUserPool]
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      UserPoolId: !Ref CognitoUserPool
-      ClientName: MyDocusaurusUserPoolClient
-      GenerateSecret: False
-      SupportedIdentityProviders:
-        - COGNITO
-      AllowedOAuthFlows:
-        - code
-      AllowedOAuthScopes:
-        - email
-        - openid
-        - profile
-      CallbackURLs:
-        - !Sub "https://${stackName}-auth/callback"
-      LogoutURLs:
-        - !Sub "https://${stackName}-auth/logout"
-      AllowedOAuthFlowsUserPoolClient: true
-      ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-
-  CognitoUserPoolDomain: 
-    Type: AWS::Cognito::UserPoolDomain 
-    Properties:
-      UserPoolId: !Ref CognitoUserPool 
-      Domain: !Sub "${stackName}-auth"
-
-
-  LambdaEdgeFunction:
-    DependsOn: [CognitoUserPool, CognitoUserPoolClient, LambdaEdgeFunctionRole]
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/lambdaedge.zip
-      Handler: index.handler
-      Role: !GetAtt LambdaEdgeFunctionRole.Arn
-      Runtime: nodejs16.x
-      Environment:
-        Variables:
-          COGNITO_CLIENTID: !Ref CognitoUserPoolClient
-          COGNITO_USERPOOLDOMAIN: !Sub "${stackName}-auth"
-
-  LambdaEdgeFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-                - edgelambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaEdgeFunctionRolePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: 'arn:aws:logs:*:*:*'
-
 Outputs:
   CognitoUserPoolId:
     Description: "Cognito User Pool ID"
     Value: !Ref CognitoUserPool
   CloudFrontDistributionDomain:
     Description: "CloudFront Distribution Domain Name"
-    Value: !GetAtt CloudFrontDistribution.DomainName
+    Value: !GetAtt DocsCloudFrontDistribution.DomainName
