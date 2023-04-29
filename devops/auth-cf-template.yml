@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A sample Node.js-based API service on AWS Lambda and API Gateway
+Parameters:
+  StackName:
+    Description: 'Required. Name of CF Stack'
+    Type: 'String'
+
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${StackName}-pool"
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+
+  CognitoUserPoolClient:
+    DependsOn: [CognitoUserPool]
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub "${StackName}-client"
+      GenerateSecret: False
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - https://example.com/will-be-replaced
+      LogoutURLs:
+        - https://example.com/will-be-replaced
+      AllowedOAuthFlowsUserPoolClient: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  CognitoUserPoolDomain: 
+    Type: AWS::Cognito::UserPoolDomain 
+    Properties:
+      UserPoolId: !Ref CognitoUserPool 
+      Domain: !Sub "${StackName}-auth"
+
+  SAMBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${StackName}-sam'
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration: 
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+        - AbortIncompleteMultipartUpload:
+            DaysAfterInitiation: 7
+          Status: Enabled
+        - NoncurrentVersionExpirationInDays: 30
+          Status: Enabled
+
+Outputs:
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+  CognitoUserPoolDomain:
+    Description: "CloudFront Distribution Domain Name"
+    Value: !GetAtt CognitoUserPoolDomain.DomainName
+  AuthBucketName:
+    Description: "S3 Bucket for SAM deployment"
+    Value: !Sub '${StackName}-sam'

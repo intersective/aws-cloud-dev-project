@@ -1,16 +1,43 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: A sample Node.js-based API service on AWS Lambda and API Gateway
+Description: >
+  Example stack to that reuses the auth portion of the serverless application
+  in your own CloudFront distribution. 
+  After deployment, manually update the User Pool client to point the 'Callback URL' and 'Sign out URL' to the URL of the CloudFront distribution.
+  Alternately, add an alternate domain name to the CloudFront distribution and provide the name as parameter to the serverless stack. The alternate
+  domain will also require adding a certificate to the Cloudfront Distribution. This alternative will set the User Pool client to the right Callback URL
+  and Sign out URL automatically.
+  The sample CloudFront distribution illustrates a full pattern of use -- modify it as needed.
+  The HttpHeaders parameter and corresponding reference in the 'LambdaEdgeProtection' nested application Resource
+  illustrates how to pass information to the underlying SAM app
+  Outputs illustrate retrieving values from the underlying SAM application
+
 Parameters:
-  S3BUCKET:
-    Description: 'Required. Bucket for artifacts'
-    Type: 'String'
   StackName:
     Description: 'Required. Name of CF Stack'
     Type: 'String'
+  DomainName:
+    Description: 'Required. Name of base domain for sites'
+    Type: 'String'
+  SemanticVersion:
+    Type: String
+    Description: Semantic version of the back end
+    Default: 2.1.5
+  HttpHeaders:
+    Type: String
+    Description: The HTTP headers to set on all responses from CloudFront. Defaults are illustrations only and contain a report-only Cloud Security Policy -- adjust for your application
+    Default: >-
+      {
+        "Content-Security-Policy-Report-Only": "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "Referrer-Policy": "same-origin",
+        "X-XSS-Protection": "1; mode=block",
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff"
+      }
 
 Resources:
-  DocsBucket:
+  DocusaurusS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${StackName}-docs'
@@ -28,186 +55,117 @@ Resources:
         - NoncurrentVersionExpirationInDays: 30
           Status: Enabled
 
-  CognitoUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: MyDocusaurusUserPool
-      UsernameAttributes:
-        - email
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireUppercase: False
-          RequireLowercase: False
-          RequireNumbers: False
-          RequireSymbols: False
-      Schema:
-       - Name: email
-         Required: true
-         Mutable: true
-         AttributeDataType: String
-
-  CognitoUserPoolClient:
-    DependsOn: [CognitoUserPool]
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      UserPoolId: !Ref CognitoUserPool
-      ClientName: MyDocusaurusUserPoolClient
-      GenerateSecret: False
-      SupportedIdentityProviders:
-        - COGNITO
-      AllowedOAuthFlows:
-        - code
-      AllowedOAuthScopes:
-        - email
-        - openid
-        - profile
-      CallbackURLs:
-        - !Sub "https://${StackName}-auth/callback"
-      LogoutURLs:
-        - !Sub "https://${StackName}-auth/logout"
-      AllowedOAuthFlowsUserPoolClient: true
-      ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-
-  CognitoUserPoolDomain: 
-    Type: AWS::Cognito::UserPoolDomain 
-    Properties:
-      UserPoolId: !Ref CognitoUserPool 
-      Domain: !Sub "${StackName}-auth"
-
-
-  LambdaEdgeFunction:
-    Type: AWS::Serverless::Function
-    DependsOn: [CognitoUserPoolClient, LambdaEdgeFunctionRole]
-    Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: lambdaedge/authorizer.zip
-      Handler: index.handler
-      Role: !GetAtt LambdaEdgeFunctionRole.Arn
-      Runtime: nodejs16.x
-      Environment:
-        Variables:
-          COGNITO_CLIENTID: !Ref CognitoUserPoolClient
-          COGNITO_USERPOOLDOMAIN: !Sub "${StackName}-auth"
-
-  LambdaEdgeFunctionVersion:
-    Type: AWS::Lambda::Version
-    Properties:
-      FunctionName: !GetAtt LambdaEdgeFunction.Arn
-
-  LambdaEdgeFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-                - edgelambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaEdgeFunctionRolePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: 'arn:aws:logs:*:*:*'
-
-  DocsCloudFrontOriginAccessIdentity:
-    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
-    Properties:
-      CloudFrontOriginAccessIdentityConfig:
-        Comment: !Sub '${StackName}-oai'
-
-  DocsBucketPolicy:
-    DependsOn: [DocsCloudFrontOriginAccessIdentity]
+  ## Specifying the policies to make sure all files inside the Bucket are avaialble to CloudFront
+  DocusaurusS3BucketPolicy:
+    DependsOn: [DocusaurusCloudFrontOriginAccessIdentity]
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref DocsBucket
+      Bucket:
+        Ref: DocusaurusS3Bucket
       PolicyDocument:
         Statement:
         - Sid: S3-Bucket-Accesible via CDN OAI only
           Action: 's3:GetObject'
           Effect: Allow
-          Resource: !Sub 'arn:aws:s3:::${DocsBucket}/*'
+          Resource: !Sub 'arn:aws:s3:::${DocusaurusS3Bucket}/*'
           Principal:
-            CanonicalUser: !GetAtt DocsCloudFrontOriginAccessIdentity.S3CanonicalUserId 
-        - Sid: AllowSSLRequestsOnly
+            CanonicalUser: !GetAtt DocusaurusCloudFrontOriginAccessIdentity.S3CanonicalUserId 
+        - Sid: AllowSSLRequestsOnly # AWS Foundational Security Best Practices v1.0.0 S3.5
           Effect: Deny
           Principal: '*'
           Action: 's3:*'
           Resource:
-          - !Sub 'arn:aws:s3:::${DocsBucket}'
-          - !Sub 'arn:aws:s3:::${DocsBucket}/*'
+          - !Sub 'arn:aws:s3:::${DocusaurusS3Bucket}'
+          - !Sub 'arn:aws:s3:::${DocusaurusS3Bucket}/*'
           Condition:
             Bool:
               'aws:SecureTransport': false
 
-  DocsCloudFrontDistribution:
-    DependsOn: [LambdaEdgeFunction, DocsCloudFrontOriginAccessIdentity, DocsCloudFrontSecurityHeaderResponse]
+  ## Specifying the CloudFront Origin Access Identity CDN Distribution to server your Web Application
+  DocusaurusCloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "Cloudfront Origin identity for ${StackName}-docs"
+
+  ## Specifying the CloudFront Distribution to server your Web Application
+  DocusaurusCloudFrontDistribution:
+    DependsOn: [DocusaurusCloudFrontSecurityHeaderResponse]
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        Origins:
-        - DomainName: !GetAtt DocsBucket.DomainName
-          Id: !Sub '${StackName}-docs'
-          S3OriginConfig:
-            OriginAccessIdentity: 
-               Fn::Join:
-                - ''
-                -
-                  - 'origin-access-identity/cloudfront/'
-                  - Ref: DocsCloudFrontOriginAccessIdentity
-        Comment: !Sub '${StackName}-distribution'
-        LambdaFunctionAssociations:
-          - EventType: viewer-request
-            LambdaFunctionARN: 
-              Ref LambdaEdgeFunctionVersion
+        Comment: !Sub "Cloudfront Origin identity for ${StackName}-docs"
+        CacheBehaviors:
+          - PathPattern: /parseauth
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.ParseAuthHandler
+            TargetOriginId: dummy-origin
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: /refreshauth
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.RefreshAuthHandler
+            TargetOriginId: dummy-origin
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: /signout
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.SignOutHandler
+            TargetOriginId: dummy-origin
+            ViewerProtocolPolicy: redirect-to-https
         DefaultCacheBehavior:
-          AllowedMethods:
-          - GET
-          - HEAD
-          - OPTIONS
-          CachedMethods:
-          - GET
-          - HEAD
-          - OPTIONS
           Compress: true
-          DefaultTTL: 3600
           ForwardedValues:
-            Cookies:
-              Forward: none
-            QueryString: false
-          MaxTTL: 86400
-          MinTTL: 60
-          TargetOriginId: !Sub '${StackName}-docs'
+            QueryString: true
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.CheckAuthHandler
+            - EventType: origin-response
+              LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.HttpHeadersHandler
+          TargetOriginId: !Sub "${StackName}-docs"
           ViewerProtocolPolicy: 'redirect-to-https'
-          ResponseHeadersPolicyId: !Ref DocsCloudFrontSecurityHeaderResponse
+          ResponseHeadersPolicyId: !Ref DocusaurusCloudFrontSecurityHeaderResponse
         DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /404.html
+          # - ErrorCode: 403
+          #   ResponseCode: 200
+          #   ResponsePagePath: /index.html
         Enabled: true
         HttpVersion: http2
         IPV6Enabled: true
+        Origins:
+          - DomainName: example.org # Dummy origin is used for Lambda@Edge functions, keep this as-is
+            Id: dummy-origin
+            CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
+          - DomainName: !GetAtt 'DocusaurusS3Bucket.RegionalDomainName'
+            Id: !Sub "${StackName}-docs"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${DocusaurusCloudFrontOriginAccessIdentity}'
         PriceClass: 'PriceClass_All'
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
 
   # Specifying the CloudFront Distribution Security Response Header
-  DocsCloudFrontSecurityHeaderResponse:
+  DocusaurusCloudFrontSecurityHeaderResponse:
     Type: AWS::CloudFront::ResponseHeadersPolicy
     Properties: 
       ResponseHeadersPolicyConfig: 
-        Comment: !Sub '${StackName}-docs'
-        Name: !Sub '${StackName}-docs'
+        Comment: !Sub "practera-security-headers-for-${StackName}-docs"
+        Name: "practera-security-headers-for-APPv2"
         SecurityHeadersConfig: 
           StrictTransportSecurity: 
             AccessControlMaxAgeSec: 31536000
@@ -215,10 +173,46 @@ Resources:
             Override: true
             Preload: true
 
+  LambdaEdgeProtection:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:520945424137:applications/cloudfront-authorization-at-edge
+        SemanticVersion: !Ref SemanticVersion
+      Parameters:
+        CreateCloudFrontDistribution: "false"
+        HttpHeaders: !Ref HttpHeaders
+        AlternateDomainNames: !Sub ${DomainName}
+
 Outputs:
-  CognitoUserPoolId:
-    Description: "Cognito User Pool ID"
-    Value: !Ref CognitoUserPool
-  CloudFrontDistributionDomain:
-    Description: "CloudFront Distribution Domain Name"
-    Value: !GetAtt DocsCloudFrontDistribution.DomainName
+  DocusaurusS3Bucket:
+    Description: 'Name of the S3 bucket storing the static files.'
+    Value: !Ref DocusaurusS3Bucket
+    Export:
+      Name: !Sub ${StackName}-DocusaurusS3Bucket
+
+  DocusaurusS3BucketURL:
+    Description: 'URL to static website.'
+    Value: https://${env:DocusaurusS3BUCKET}
+    Export:
+      Name: !Sub ${StackName}-DocusaurusS3BucketURL
+
+  DocusaurusCloudFrontDistributionID:
+    Description: 'CloudFront distribution id'
+    Value: !Ref DocusaurusCloudFrontDistribution
+    Export:
+      Name: !Sub ${StackName}-DocusaurusCloudFrontDistributionID
+
+  DocusaurusCloudFrontDistributionOutput:
+    Value:
+      'Fn::GetAtt': [ DocusaurusCloudFrontDistribution, DomainName ]
+    Export:
+      Name: !Sub ${StackName}-DocusaurusCloudFrontDistributionOutput
+  
+  UserPoolId:
+    Description: The user pool id to illustrate how to retrieve outputs from the SAM app
+    Value: !GetAtt LambdaEdgeProtection.Outputs.UserPoolId
+    
+
+
+
