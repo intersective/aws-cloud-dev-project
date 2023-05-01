@@ -11,6 +11,46 @@ Metadata:
       Reserved.
 
 Parameters:
+  StackName:
+    ConstraintDescription: This will be unique string to represent our stack.
+    Default: pcloud-sandbox
+    Description: A client/project/product unique name for the stack to idnetify later.
+      This string can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  UserPoolArn: 
+    Description: The ARN of a previously created cognito user pool
+    Type: String
+  UserPoolClientId:
+    Description:  The clientID of a previously created cognito user pool client
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+
+
+  ## ARE THESE USED?
+  CURRENTREGION:
+    Default: us-east-1
+    Description: The AWS Region where the Cloudformation template stored in S3 bucket
+      is hosted. When using your own bucket, you must specify this value.
+    Type: String
+  CFNS3BucketName:
+    Description: S3 bucket name for the Cloudformation template stored. This string
+      can include numbers, lowercase letters, uppercase letters, and hyphens (-).
+      It cannot start or end with a hyphen (-).
+    Default: pcloud-cfn-templates-dev
+    Type: String
+  CFNS3BucketRegion:
+    Default: us-east-1
+    Description: The AWS Region where the Cloudformation template stored in S3 bucket
+      is hosted. When using your own bucket, you must specify this value.
+    Type: String
+
+
+  ## You are unlikely to want to override these parameters
   SemanticVersion:
     Type: String
     Description: Semantic version of the back end
@@ -27,49 +67,14 @@ Parameters:
         "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff"
       }
-
-  CFNS3BucketName:
-    Description: S3 bucket name for the Cloudformation template stored. This string
-      can include numbers, lowercase letters, uppercase letters, and hyphens (-).
-      It cannot start or end with a hyphen (-).
-    Default: pcloud-cfn-templates-dev
-    Type: String
-  CFNS3BucketRegion:
-    Default: us-east-1
-    Description: The AWS Region where the Cloudformation template stored in S3 bucket
-      is hosted. When using your own bucket, you must specify this value.
-    Type: String
-  StackName:
-    ConstraintDescription: This will be unique string to represent our stack.
-    Default: pcloud-sandbox
-    Description: A client/project/product unique name for the stack to idnetify later.
-      This string can include numbers, lowercase letters, uppercase letters, and hyphens
-      (-). It cannot start or end with a hyphen (-).
-    Type: String
-  RootStackName:
-    Description: 'The root stack name of cfn templates'
+  AppStackPostfix:
+    Description: 'Appended to the stack name to denote the app stacks'
     Type: String
     Default: cdn
-  Env:
-    Description: Environment type.
-    Default: dev
-    Type: String
-    ConstraintDescription: must specify dev,test,live.
-  CURRENTREGION:
-    Default: us-east-1
-    Description: The AWS Region where the Cloudformation template stored in S3 bucket
-      is hosted. When using your own bucket, you must specify this value.
-    Type: String
   WebsiteURL:
     Description: Website URL
     Type: String
     Default: app.pcloud.practeraco.de
-  UserPoolArn: 
-    Description: The ARN of a previously created cognito user pool
-    Type: String
-  UserPoolClientId:
-    Description:  The clientID of a previously created cognito user pool client
-    Type: String
   EnableSPAMode:
     Description: Support single page apps (with javascript routing) in the protected web distro or just handle static sites
     Type: String
@@ -97,7 +102,7 @@ Resources:
   DocusaurusS3Bucket:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub '${StackName}-${RootStackName}'
+      BucketName: !Sub '${StackName}-${AppStackPostfix}'
       BucketEncryption: 
         ServerSideEncryptionConfiguration: 
         - ServerSideEncryptionByDefault:
@@ -191,7 +196,7 @@ Resources:
               LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.CheckAuthHandler
             - EventType: origin-response
               LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.HttpHeadersHandler
-          TargetOriginId: !Sub '${StackName}-${RootStackName}'
+          TargetOriginId: !Sub '${StackName}-${AppStackPostfix}'
           ViewerProtocolPolicy: 'redirect-to-https'
           ResponseHeadersPolicyId: !Ref DocusaurusCloudFrontSecurityHeaderResponse
         DefaultRootObject: index.html
@@ -207,7 +212,7 @@ Resources:
         IPV6Enabled: true
         Origins:
           - DomainName: !GetAtt 'DocusaurusS3Bucket.RegionalDomainName'
-            Id: !Sub '${StackName}-${RootStackName}'
+            Id: !Sub '${StackName}-${AppStackPostfix}'
             S3OriginConfig:
               OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${DocusaurusCloudFrontOriginAccessIdentity}'
           # - DomainName: example.org # Dummy origin is used for Lambda@Edge functions, keep this as-is
@@ -259,7 +264,7 @@ Outputs:
 
   DocusaurusS3BucketURL:
     Description: 'URL to static website.'
-    Value: !Sub '${StackName}-${RootStackName}'
+    Value: !Sub '${StackName}-${AppStackPostfix}'
     Export:
       Name: !Sub '${StackName}-DocusaurusS3BucketURL-${Env}'
 
