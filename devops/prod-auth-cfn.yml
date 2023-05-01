@@ -66,8 +66,8 @@ Parameters:
     Description: Website URL
     Type: String
     Default: app.pcloud.practeraco.de
-  PoolPostfix:
-    Description: 'The postfix used with the userpool stack'
+  PoolNameSuffix:
+    Description: 'The suffix used with the userpool stack'
     Type: String
     Default: userpool
 
@@ -82,7 +82,7 @@ Resources:
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub '${StackName}-${PoolPostfix}'
+      UserPoolName: !Sub '${StackName}-${PoolNameSuffix}'
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -130,7 +130,7 @@ Resources:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref UserPool
-      Domain: !Sub '${AuthDomainSuffix}.${PublicHostedZoneName}'
+      Domain: !Sub '${StackName}-${AuthDomainSuffix}.${PublicHostedZoneName}'
       # Domain: !Sub
       #   - "auth-${StackIdSuffix}"
       #   - StackIdSuffix: !Select
@@ -139,17 +139,17 @@ Resources:
       #         - "/"
       #         - !Ref AWS::StackId
       CustomDomainConfig: 
-        CertificateArn: {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
-        # CertificateArn: arn:aws:acm:us-east-1:757882151420:certificate/ea4670ec-c20a-4c85-94a2-a461c28ca5df
+        # CertificateArn: {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
+        CertificateArn: arn:aws:acm:us-east-1:757882151420:certificate/ea4670ec-c20a-4c85-94a2-a461c28ca5df
 
   Route53RecordSet:
     DependsOn: [UserPoolDomain]
     Type: AWS::Route53::RecordSet
     Properties:
       # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneName-${Env}'}
-      HostedZoneId: {'Fn::ImportValue':  'PcloudSharedPublicHostedZoneId'}
-      # HostedZoneId: Z23M5HHU345031
-      Name: !Sub '${AuthDomainSuffix}.${PublicHostedZoneName}'
+      # HostedZoneId: {'Fn::ImportValue':  'PcloudSharedPublicHostedZoneId'}
+      HostedZoneId: Z23M5HHU345031
+      Name: !Sub '${StackName}-${AuthDomainSuffix}.${PublicHostedZoneName}'
       Type: CNAME
       TTL: 300
       ResourceRecords:
@@ -160,7 +160,8 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneName-${Env}'}
-      HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
+      # HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
+      HostedZoneId: Z23M5HHU345031
       Name: !Sub '${PublicHostedZoneName}'
       Type: A
       TTL: 60
