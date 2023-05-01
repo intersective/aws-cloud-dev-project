@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: cloudformation template for Practera Cloud Projects web app + auth + cognito infrastructure
+
+Metadata:
+  Authors:
+    Description: Based on AWS best practise.
+  License:
+    Description: Copyright 2023 Intersective PTY LTD and its affiliates. All Rights
+      Reserved.
+
+Parameters:
+  EnableSPAMode:
+    Type: String
+    Description: Set to 'false' to disable SPA-specific features (i.e. when deploying a static site that won't interact with logout/refresh)
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  OAuthScopes:
+    Type: CommaDelimitedList
+    Description: The OAuth scopes to request the User Pool to add to the access token JWT
+    Default: "phone, email, profile, openid, aws.cognito.signin.user.admin"
+  StackName:
+    ConstraintDescription: This will be unique string to represent our stack.
+    Default: pcloud-sandbox
+    Description: A client/project/product unique name for the stack to idnetify later.
+      This string can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  RootStackName:
+    Description: 'The root stack name of cfn templates'
+    Type: String
+    Default: userpool
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+  CURRENTREGION:
+    Default: us-east-1
+    Description: The AWS Region where the Cloudformation template stored in S3 bucket
+      is hosted. When using your own bucket, you must specify this value.
+    Type: String
+  PublicHostedZoneName:
+    Description: 'The root stack name of cfn templates'
+    Type: String
+    Default: pcloud.practeraco.de
+  CallbackURLs:
+    Description: 'Call back url'
+    Type: String
+    Default: app.pcloud.practeraco.de
+  LogoutURLs:
+    Description: 'logout url'
+    Type: String
+    Default: app.pcloud.practeraco.de
+  AuthDomainSuffix:
+    Description: 'auth suffix'
+    Type: String
+    Default: auth
+  WebsiteURL:
+    Description: Website URL
+    Type: String
+    Default: app.pcloud.practeraco.de
+  UserEmail:
+    Description: Email of Initial user to add to pool
+    Type: String
+
+Conditions:
+  GenerateClientSecret: !Equals
+    - EnableSPAMode
+    - "false"
+
+Resources:
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${StackName}-${RootStackName}'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameAttributes:
+        - email
+  UserPoolClient:
+    DependsOn: [UserPool]
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      PreventUserExistenceErrors: ENABLED
+      GenerateSecret: !If
+        - GenerateClientSecret
+        - true
+        - false
+      AllowedOAuthScopes: !Ref OAuthScopes
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        # The following sentinel value will be replaced by Auth@Edge with the CloudFront domain name (if you let Auth@Edge create the CloudFront distribution)
+        # - https://example.com/will-be-replaced
+        - !Sub 'https://${CallbackURLs}'
+
+      LogoutURLs:
+        # The following sentinel value will be replaced by Auth@Edge with the CloudFront domain name (if you let Auth@Edge create the CloudFront distribution)
+        # - https://example.com/will-be-replaced
+        - !Sub 'https://${LogoutURLs}'
+
+  UserPoolDomain:
+    DependsOn: [CustomARecordRoute53RecordSet]
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Sub '${AuthDomainSuffix}.${PublicHostedZoneName}'
+      # Domain: !Sub
+      #   - "auth-${StackIdSuffix}"
+      #   - StackIdSuffix: !Select
+      #       - 2
+      #       - !Split
+      #         - "/"
+      #         - !Ref AWS::StackId
+      CustomDomainConfig: 
+        CertificateArn: {'Fn::ImportValue': !Sub '${StackName}-PcloudSharedACMCertificateArn-${Env}'}
+
+
+  Route53RecordSet:
+    DependsOn: [UserPoolDomain]
+    Type: AWS::Route53::RecordSet
+    Properties:
+      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneName-${Env}'}
+      HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
+      Name: !Sub '${AuthDomainSuffix}.${PublicHostedZoneName}'
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - !GetAtt UserPoolDomain.CloudFrontDistribution
+
+
+  CustomARecordRoute53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneName-${Env}'}
+      HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
+      Name: !Sub '${PublicHostedZoneName}'
+      Type: A
+      TTL: 60
+      ResourceRecords:
+        - 127.0.0.1
+
+
+
+  User:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      Username: !Sub '${UserEmail}'
+      UserPoolId: !Ref UserPool
+      DesiredDeliveryMediums: 
+        - EMAIL
+
+Outputs:
+  UserPoolArn:
+    Description: User Pool Arn
+    Value: !GetAtt UserPool.Arn
+
+  UserPoolClientId:
+    Description: User Pool Arn
+    Value: !Ref UserPoolClient
+
+  EnableSPAMode:
+    Description: Enable SPA Mode
+    Value: !Ref EnableSPAMode
+
+  OAuthScopes:
+    Description: OAuth Scopes
+    Value: !Join [",", !Ref OAuthScopes]
