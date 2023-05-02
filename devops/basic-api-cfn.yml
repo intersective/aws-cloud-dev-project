@@ -5,7 +5,9 @@ Parameters:
   S3BUCKET:
     Description: 'Required. Bucket for artifacts'
     Type: 'String'
- 
+  Email:
+    Description: 'Required. Allows for tagging'
+    Type: 'String' 
 Resources:
 ##########################################################################
 #   DynamoDB                                                            #
@@ -15,7 +17,7 @@ Resources:
     Properties:
       Tags:
         - Key: createdBy
-          Value: !Sub "${aws:username}"
+          Value: !Sub "${Email}"
       AttributeDefinitions:
         - AttributeName: postId
           AttributeType: S
