@@ -29,14 +29,14 @@ Parameters:
     Default: dev
     Type: String
     ConstraintDescription: must specify dev,test,live.
-  HostedZoneId:
-    Type: String 
-    Description: to pass in a hosted zone ID manually
-    Default: ""
   CertificateArn:
     Type: String
     Description: to pass in a certificate ARN manually
-    Default: ""
+    Default: "arn:aws:acm:us-east-1:320980967765:certificate/380362bf-8908-4f05-90b5-9049f3cbca97"
+  HostedZoneId:
+    Type: String 
+    Description: to pass in a hosted zone ID manually
+    Default: "Z01303651J6RNITKN4O4O"
 
   ## ARE THESE USED?
   CURRENTREGION:
@@ -91,10 +91,6 @@ Parameters:
     Default: "phone, email, profile, openid, aws.cognito.signin.user.admin"
     Type: String
 
-Conditions:
-  HasHostedZoneIdParam:  !Equals [!Ref "HostedZoneId", ""]
-  HasCertificateArnParam:  !Equals [!Ref "CertificateArn", ""]
-
 
 Resources:
 
@@ -102,10 +98,7 @@ Resources:
     DependsOn: [DocusaurusCloudFrontDistribution]
     Type: 'AWS::Route53::RecordSetGroup'
     Properties:
-      HostedZoneId: !If
-        - HasHostedZoneIdParam
-        - !Ref "HostedZoneId"
-        - {'Fn::ImportValue':  'PublicHostedZoneId'}
+      HostedZoneId:  {'Fn::ImportValue': !Sub '${StackName}-HostedZoneId-${Env}'}
       RecordSets:
       - Name: !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
         Type: CNAME
@@ -236,10 +229,7 @@ Resources:
               OriginProtocolPolicy: match-viewer
         PriceClass: 'PriceClass_All'
         ViewerCertificate:
-          CertificateArn: !If
-          - HasCertificateArnParam
-          - !Ref "CertificateArn"
-          - {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
+          CertificateArn: {'Fn::ImportValue': !Sub '${StackName}-CertificateArn-${Env}'}
           MinimumProtocolVersion: 'TLSv1.2_2021'  # OLD VALUE:'TLSv1.2_2019'
           SslSupportMethod: 'sni-only'
 
@@ -267,10 +257,10 @@ Resources:
         CreateCloudFrontDistribution: "false"
         HttpHeaders: !Ref HttpHeaders
         AlternateDomainNames: !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
-        UserPoolArn: !Ref UserPoolArn
-        UserPoolClientId: !Ref UserPoolClientId
-        EnableSPAMode: !Ref EnableSPAMode
-        OAuthScopes: !Ref OAuthScopes
+        UserPoolArn: {'Fn::ImportValue': !Sub '${StackName}-UserPoolArn-${Env}'}
+        UserPoolClientId: {'Fn::ImportValue': !Sub '${StackName}-UserPoolClientId-${Env}'}
+        EnableSPAMode: {'Fn::ImportValue': !Sub '${StackName}-EnableSPAMode-${Env}'}
+        OAuthScopes: {'Fn::ImportValue': !Sub '${StackName}-OAuthScopes-${Env}'}
 
 Outputs:
   DocusaurusS3Bucket:
@@ -295,5 +285,5 @@ Outputs:
     Value:
       'Fn::GetAtt': [ DocusaurusCloudFrontDistribution, DomainName ]
     Export:
-      Name:   !Sub '${StackName}-DocusaurusCloudFrontDistributionOutput-${Env}'
+      Name: !Sub '${StackName}-DocusaurusCloudFrontDistributionOutput-${Env}'
 

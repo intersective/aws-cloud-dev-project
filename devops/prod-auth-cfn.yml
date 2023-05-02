@@ -29,11 +29,11 @@ Parameters:
   CertificateArn:
     Type: String
     Description: to pass in a certificate ARN manually
-    Default: ""
+    Default: "arn:aws:acm:us-east-1:320980967765:certificate/380362bf-8908-4f05-90b5-9049f3cbca97"
   HostedZoneId:
     Type: String 
     Description: to pass in a hosted zone ID manually
-    Default: ""
+    Default: "Z01303651J6RNITKN4O4O"
 
   ## IS THIS USED?  
   CURRENTREGION:
@@ -75,8 +75,6 @@ Conditions:
   GenerateClientSecret: !Equals
     - EnableSPAMode
     - "false"
-  HasCertificateArnParam:  !Equals [!Ref "CertificateArn", ""]
-  HasHostedZoneIdParam:  !Equals [!Ref "HostedZoneId", ""]
 
 Resources:
   UserPool:
@@ -139,10 +137,7 @@ Resources:
       #         - "/"
       #         - !Ref AWS::StackId
       CustomDomainConfig: 
-        CertificateArn: !If
-          - HasCertificateArnParam
-          - !Ref "CertificateArn"
-          - {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
+        CertificateArn: !Ref "CertificateArn"
 
   Route53RecordSet:
     DependsOn: [UserPoolDomain]
@@ -150,10 +145,7 @@ Resources:
     Properties:
       # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
       # HostedZoneId: {'Fn::ImportValue':  'PcloudSharedPublicHostedZoneId'}
-      HostedZoneId: !If
-        - HasHostedZoneIdParam
-        - !Ref "HostedZoneId"
-        - {'Fn::ImportValue':  'PublicHostedZoneId'}
+      HostedZoneId: !Ref "HostedZoneId"
       Name: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
       Type: CNAME
       TTL: 300
@@ -166,10 +158,7 @@ Resources:
     Properties:
       # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
       # HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
-      HostedZoneId: !If
-        - HasHostedZoneIdParam
-        - !Ref "HostedZoneId"
-        - {'Fn::ImportValue':  'PublicHostedZoneId'}
+      HostedZoneId: !Ref "HostedZoneId"
       Name: !Sub '${RootDomainName}'
       Type: A
       TTL: 60
@@ -190,11 +179,35 @@ Outputs:
   UserPoolArn:
     Description: User Pool Arn
     Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub '${StackName}-UserPoolArn-${Env}'
 
   UserPoolClientId:
     Description: User Pool Client ID
     Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${StackName}-UserPoolClientId-${Env}'
 
   OAuthScopes:
     Description: OAuth Scopes
     Value: !Join [",", !Ref OAuthScopes]
+    Export:
+      Name: !Sub '${StackName}-OAuthScopes-${Env}'
+
+  EnableSPAMode:
+    Description: Enable SPA Mode
+    Value: !Ref EnableSPAMode
+    Export:
+      Name: !Sub '${StackName}-EnableSPAMode-${Env}'
+
+  HostedZoneId:
+    Description: HostedZoneId
+    Value: !Ref HostedZoneId
+    Export:
+      Name: !Sub '${StackName}-HostedZoneId-${Env}'
+
+  CertificateArn:
+    Description: CertificateArn
+    Value: !Ref CertificateArn
+    Export:
+      Name: !Sub '${StackName}-CertificateArn-${Env}'
