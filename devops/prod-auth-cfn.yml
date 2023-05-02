@@ -26,6 +26,14 @@ Parameters:
     Default: dev
     Type: String
     ConstraintDescription: must specify dev,test,live.
+  CertificateArn:
+    Type: String
+    Description: to pass in a certificate ARN manually
+    Default: ""
+  HostedZoneId:
+    Type: String 
+    Description: to pass in a hosted zone ID manually
+    Default: ""
 
   ## IS THIS USED?  
   CURRENTREGION:
@@ -46,43 +54,35 @@ Parameters:
     Type: CommaDelimitedList
     Description: The OAuth scopes to request the User Pool to add to the access token JWT
     Default: "phone, email, profile, openid, aws.cognito.signin.user.admin"
-  PublicHostedZoneName:
+  RootDomainName:
     Description: 'The root domain name used for the sites'
     Type: String
     Default: pcloud.practeraco.de
-  CallbackURLs:
-    Description: 'Call back url'
-    Type: String
-    Default: app.pcloud.practeraco.de
-  LogoutURLs:
-    Description: 'logout url'
-    Type: String
-    Default: app.pcloud.practeraco.de
-  AuthDomainSuffix:
-    Description: 'auth suffix'
+  AuthDomainPostfix:
+    Description: 'Cognito Auth Domain Postfix'
     Type: String
     Default: auth
-  WebsiteURL:
-    Description: Website URL
+  AppDomainPostfix:
+    Description: 'Cognito Auth Domain Postfix'
     Type: String
-    Default: app.pcloud.practeraco.de
-  PoolNameSuffix:
+    Default: app
+  PoolNamePostfix:
     Description: 'The suffix used with the userpool stack'
     Type: String
     Default: userpool
-
 
 Conditions:
   GenerateClientSecret: !Equals
     - EnableSPAMode
     - "false"
+  HasCertificateArnParam:  !Equals [!Ref "CertificateArn", ""]
+  HasHostedZoneIdParam:  !Equals [!Ref "HostedZoneId", ""]
 
 Resources:
-
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub '${StackName}-${PoolNameSuffix}'
+      UserPoolName: !Sub '${StackName}-${PoolNamePostfix}'
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -118,19 +118,19 @@ Resources:
       CallbackURLs:
         # The following sentinel value will be replaced by Auth@Edge with the CloudFront domain name (if you let Auth@Edge create the CloudFront distribution)
         # - https://example.com/will-be-replaced
-        - !Sub 'https://${CallbackURLs}'
+        - !Sub 'https://${StackName}-${AuthDomainPostfix}.${RootDomainName}/callback'
 
       LogoutURLs:
         # The following sentinel value will be replaced by Auth@Edge with the CloudFront domain name (if you let Auth@Edge create the CloudFront distribution)
         # - https://example.com/will-be-replaced
-        - !Sub 'https://${LogoutURLs}'
+        - !Sub 'https://${StackName}-${AuthDomainPostfix}.${RootDomainName}/logout'
 
   UserPoolDomain:
     DependsOn: [CustomARecordRoute53RecordSet]
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref UserPool
-      Domain: !Sub '${StackName}-${AuthDomainSuffix}.${PublicHostedZoneName}'
+      Domain: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
       # Domain: !Sub
       #   - "auth-${StackIdSuffix}"
       #   - StackIdSuffix: !Select
@@ -139,17 +139,22 @@ Resources:
       #         - "/"
       #         - !Ref AWS::StackId
       CustomDomainConfig: 
-        # CertificateArn: {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
-        CertificateArn: arn:aws:acm:us-east-1:757882151420:certificate/ea4670ec-c20a-4c85-94a2-a461c28ca5df
+        CertificateArn: !If
+          - HasCertificateArnParam
+          - !Ref "CertificateArn"
+          - {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
 
   Route53RecordSet:
     DependsOn: [UserPoolDomain]
     Type: AWS::Route53::RecordSet
     Properties:
-      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneName-${Env}'}
+      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
       # HostedZoneId: {'Fn::ImportValue':  'PcloudSharedPublicHostedZoneId'}
-      HostedZoneId: Z23M5HHU345031
-      Name: !Sub '${StackName}-${AuthDomainSuffix}.${PublicHostedZoneName}'
+      HostedZoneId: !If
+        - HasHostedZoneIdParam
+        - !Ref "HostedZoneId"
+        - {'Fn::ImportValue':  'PublicHostedZoneId'}
+      Name: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
       Type: CNAME
       TTL: 300
       ResourceRecords:
@@ -159,10 +164,13 @@ Resources:
   CustomARecordRoute53RecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
-      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneName-${Env}'}
+      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
       # HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
-      HostedZoneId: Z23M5HHU345031
-      Name: !Sub '${PublicHostedZoneName}'
+      HostedZoneId: !If
+        - HasHostedZoneIdParam
+        - !Ref "HostedZoneId"
+        - {'Fn::ImportValue':  'PublicHostedZoneId'}
+      Name: !Sub '${RootDomainName}'
       Type: A
       TTL: 60
       ResourceRecords:
@@ -184,12 +192,8 @@ Outputs:
     Value: !GetAtt UserPool.Arn
 
   UserPoolClientId:
-    Description: User Pool Arn
+    Description: User Pool Client ID
     Value: !Ref UserPoolClient
-
-  EnableSPAMode:
-    Description: Enable SPA Mode
-    Value: !Ref EnableSPAMode
 
   OAuthScopes:
     Description: OAuth Scopes

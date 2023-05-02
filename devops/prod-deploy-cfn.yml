@@ -29,7 +29,14 @@ Parameters:
     Default: dev
     Type: String
     ConstraintDescription: must specify dev,test,live.
-
+  HostedZoneId:
+    Type: String 
+    Description: to pass in a hosted zone ID manually
+    Default: ""
+  CertificateArn:
+    Type: String
+    Description: to pass in a certificate ARN manually
+    Default: ""
 
   ## ARE THESE USED?
   CURRENTREGION:
@@ -70,11 +77,11 @@ Parameters:
   AppStackPostfix:
     Description: 'Appended to the stack name to denote the app stacks'
     Type: String
-    Default: cdn
-  WebsiteURL:
-    Description: Website URL
+    Default: app
+  RootDomainName:
+    Description: 'The root domain name used for the sites'
     Type: String
-    Default: app.pcloud.practeraco.de
+    Default: pcloud.practeraco.de
   EnableSPAMode:
     Description: Support single page apps (with javascript routing) in the protected web distro or just handle static sites
     Type: String
@@ -82,7 +89,11 @@ Parameters:
   OAuthScopes:
     Description: The OAuth scopes to request the User Pool to add to the access token JWT
     Default: "phone, email, profile, openid, aws.cognito.signin.user.admin"
+    Type: String
 
+Conditions:
+  HasHostedZoneIdParam:  !Equals [!Ref "HostedZoneId", ""]
+  HasCertificateArnParam:  !Equals [!Ref "CertificateArn", ""]
 
 
 Resources:
@@ -91,9 +102,12 @@ Resources:
     DependsOn: [DocusaurusCloudFrontDistribution]
     Type: 'AWS::Route53::RecordSetGroup'
     Properties:
-      HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
+      HostedZoneId: !If
+        - HasHostedZoneIdParam
+        - !Ref "HostedZoneId"
+        - {'Fn::ImportValue':  'PublicHostedZoneId'}
       RecordSets:
-      - Name: !Ref WebsiteURL
+      - Name: !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
         Type: CNAME
         TTL: '3200'
         ResourceRecords:
@@ -157,7 +171,7 @@ Resources:
     Properties:
       DistributionConfig:
         Aliases:
-        - !Ref WebsiteURL
+        - !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
         Comment: "Cloudfront Origin identity for DocusaurusS3BUCKET"
         CacheBehaviors:
           - PathPattern: /parseauth
@@ -222,7 +236,10 @@ Resources:
               OriginProtocolPolicy: match-viewer
         PriceClass: 'PriceClass_All'
         ViewerCertificate:
-          AcmCertificateArn: {'Fn::ImportValue': !Sub '${StackName}-PcloudSharedACMCertificateArn-${Env}'}
+          CertificateArn: !If
+          - HasCertificateArnParam
+          - !Ref "CertificateArn"
+          - {'Fn::ImportValue': 'PcloudSharedACMCertificateArn'}
           MinimumProtocolVersion: 'TLSv1.2_2021'  # OLD VALUE:'TLSv1.2_2019'
           SslSupportMethod: 'sni-only'
 
@@ -249,7 +266,7 @@ Resources:
       Parameters:
         CreateCloudFrontDistribution: "false"
         HttpHeaders: !Ref HttpHeaders
-        AlternateDomainNames: !Ref WebsiteURL
+        AlternateDomainNames: !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
         UserPoolArn: !Ref UserPoolArn
         UserPoolClientId: !Ref UserPoolClientId
         EnableSPAMode: !Ref EnableSPAMode
