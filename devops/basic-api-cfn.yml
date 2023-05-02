@@ -13,6 +13,9 @@ Resources:
   DynamoTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      Tags:
+        - Key: createdBy
+          Value: !Sub "${aws:username}"
       AttributeDefinitions:
         - AttributeName: postId
           AttributeType: S

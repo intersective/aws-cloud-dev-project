@@ -18,25 +18,18 @@ Parameters:
       This string can include numbers, lowercase letters, uppercase letters, and hyphens
       (-). It cannot start or end with a hyphen (-).
     Type: String
-  UserPoolArn: 
-    Description: The ARN of a previously created cognito user pool
-    Type: String
-  UserPoolClientId:
-    Description:  The clientID of a previously created cognito user pool client
+  AuthStackName:
+    ConstraintDescription: This will be unique string to represent our stack.
+    Default: my-auth-stack
+    Description: A client/project/product unique name for the stack to idnetify later.
+      This string can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
     Type: String
   Env:
     Description: Environment type.
     Default: dev
     Type: String
     ConstraintDescription: must specify dev,test,live.
-  CertificateArn:
-    Type: String
-    Description: to pass in a certificate ARN manually
-    Default: "arn:aws:acm:us-east-1:320980967765:certificate/380362bf-8908-4f05-90b5-9049f3cbca97"
-  HostedZoneId:
-    Type: String 
-    Description: to pass in a hosted zone ID manually
-    Default: "Z01303651J6RNITKN4O4O"
 
   ## ARE THESE USED?
   CURRENTREGION:
@@ -55,7 +48,6 @@ Parameters:
     Description: The AWS Region where the Cloudformation template stored in S3 bucket
       is hosted. When using your own bucket, you must specify this value.
     Type: String
-
 
   ## You are unlikely to want to override these parameters
   SemanticVersion:
@@ -82,14 +74,6 @@ Parameters:
     Description: 'The root domain name used for the sites'
     Type: String
     Default: pcloud.practeraco.de
-  EnableSPAMode:
-    Description: Support single page apps (with javascript routing) in the protected web distro or just handle static sites
-    Type: String
-    Default: "true"
-  OAuthScopes:
-    Description: The OAuth scopes to request the User Pool to add to the access token JWT
-    Default: "phone, email, profile, openid, aws.cognito.signin.user.admin"
-    Type: String
 
 
 Resources:
@@ -98,7 +82,7 @@ Resources:
     DependsOn: [DocusaurusCloudFrontDistribution]
     Type: 'AWS::Route53::RecordSetGroup'
     Properties:
-      HostedZoneId:  {'Fn::ImportValue': !Sub '${StackName}-HostedZoneId-${Env}'}
+      HostedZoneId:  {'Fn::ImportValue': !Sub '${AuthStackName}-HostedZoneId-${Env}'}
       RecordSets:
       - Name: !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
         Type: CNAME
@@ -229,7 +213,7 @@ Resources:
               OriginProtocolPolicy: match-viewer
         PriceClass: 'PriceClass_All'
         ViewerCertificate:
-          CertificateArn: {'Fn::ImportValue': !Sub '${StackName}-CertificateArn-${Env}'}
+          AcmCertificateArn: {'Fn::ImportValue': !Sub '${AuthStackName}-CertificateArn-${Env}'}
           MinimumProtocolVersion: 'TLSv1.2_2021'  # OLD VALUE:'TLSv1.2_2019'
           SslSupportMethod: 'sni-only'
 
@@ -239,7 +223,7 @@ Resources:
     Properties: 
       ResponseHeadersPolicyConfig: 
         Comment: "practera-security-headers-for-DocusaurusS3BUCKET"
-        Name: "practera-security-headers-for-APPv2"
+        Name: !Sub '${StackName}-security-headers-${Env}'
         SecurityHeadersConfig: 
           StrictTransportSecurity: 
             AccessControlMaxAgeSec: 31536000
@@ -257,10 +241,10 @@ Resources:
         CreateCloudFrontDistribution: "false"
         HttpHeaders: !Ref HttpHeaders
         AlternateDomainNames: !Sub '${StackName}-${AppStackPostfix}.${RootDomainName}'
-        UserPoolArn: {'Fn::ImportValue': !Sub '${StackName}-UserPoolArn-${Env}'}
-        UserPoolClientId: {'Fn::ImportValue': !Sub '${StackName}-UserPoolClientId-${Env}'}
-        EnableSPAMode: {'Fn::ImportValue': !Sub '${StackName}-EnableSPAMode-${Env}'}
-        OAuthScopes: {'Fn::ImportValue': !Sub '${StackName}-OAuthScopes-${Env}'}
+        UserPoolArn: {'Fn::ImportValue': !Sub '${AuthStackName}-UserPoolArn-${Env}'}
+        UserPoolClientId: {'Fn::ImportValue': !Sub '${AuthStackName}-UserPoolClientId-${Env}'}
+        EnableSPAMode: {'Fn::ImportValue': !Sub '${AuthStackName}-EnableSPAMode-${Env}'}
+        OAuthScopes: {'Fn::ImportValue': !Sub '${AuthStackName}-OAuthScopes-${Env}'}
 
 Outputs:
   DocusaurusS3Bucket:
