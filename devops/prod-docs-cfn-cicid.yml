@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackName:
+    Type: String
+    Description: Name of the CloudFormation stack
+    Default: 'mytest'
+  Rootstack:
+    Type: String
+    Description: Name of the CloudFormation stack
+    Default: 'mydemo1'
+  Env:
+    Type: String
+    Description: Environment name for the stack (e.g. dev, test, prod)
+    Default: 'dev'
+  UserName:
+    Type: String
+    Description: Environment name for the stack (e.g. dev, test, prod)
+    Default: 'test@example.com'
+
+
+Resources:
+
+  MyPipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      ArtifactStore:
+        Location: !Ref PipelineArtifactsBucket
+        Type: S3
+      Name: !Sub '${StackName}-${Env}'
+      Tags: 
+        - Key: createdBy
+          Value: !Sub '${UserName}'
+      RoleArn: !GetAtt PipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: '1'
+              Configuration:
+                RepositoryName: !Sub '${StackName}-${Env}' #TODO change correct repo name 
+                BranchName: trunk #TODO change correct branch name 
+              OutputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+      RestartExecutionOnUpdate: true
+
+  PipelineRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Tags: 
+        - Key: createdBy
+          Value: !Sub '${UserName}'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codepipeline.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "MyPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                Resource: 
+                  - !Sub "arn:aws:s3:::${PipelineArtifactsBucket}/*"
+              - Effect: "Allow"
+                Action:
+                  - "codecommit:GetBranch"
+                  - "codecommit:GetCommit"
+                  - "codecommit:UploadArchive"
+                  - "codecommit:GetUploadArchiveStatus"
+                Resource: !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${StackName}-${Env}"
+
+
+  PipelineArtifactsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub '${StackName}-${Env}-pipeline'
+      Tags: 
+        - Key: createdBy
+          Value: !Sub '${UserName}'
+    
+    
+  CodeBuildProject:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      Name: !Sub '${StackName}-${Env}-codebuild'
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 60
+      Tags: 
+        - Key: createdBy
+          Value: !Sub '${UserName}'
+
+
+  CodeBuildRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Tags: 
+        - Key: createdBy
+          Value: !Sub '${UserName}'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "MyPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackName}-${Env}-codebuild:*"
+
+
+  CodePipelineBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref PipelineArtifactsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codepipeline.amazonaws.com"
+            Action:
+              - "s3:GetObject"
+              - "s3:PutObject"
+            Resource: 
+              - !Sub "arn:aws:s3:::${PipelineArtifactsBucket}/*"
+

@@ -1,0 +1,294 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A sample Node.js-based API service on AWS Lambda and API Gateway
+Parameters:
+  S3BUCKET:
+    Description: 'Required. Bucket for artifacts'
+    Type: 'String'
+  Email:
+    Description: 'Required. Allows for tagging'
+    Type: 'String' 
+Resources:
+##########################################################################
+#   DynamoDB                                                            #
+##########################################################################
+  DynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      Tags:
+        - Key: createdBy
+          Value: !Sub "${Email}"
+      AttributeDefinitions:
+        - AttributeName: postId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: postId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+     
+##########################################################################
+#   Lambda Function                                                      #
+##########################################################################
+
+  APIGetPostsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/api.zip
+      Handler: dist/api.getAllPosts
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: posts
+            Method: GET
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoTable
+
+  APIGetPostsPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIGetPostsFunction
+        - Arn
+      Principal: "apigateway.amazonaws.com"
+
+  APIGetPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/api.zip
+      Handler: dist/api.getPost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post/{postId}
+            Method: GET
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoTable
+
+  APIGetPostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIGetPostFunction
+        - Arn      
+      Principal: "apigateway.amazonaws.com"
+
+  APICreatePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/api.zip
+      Handler: dist/api.createPost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post
+            Method: POST
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
+
+  APICreatePostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      Principal: "apigateway.amazonaws.com"
+      FunctionName: !GetAtt
+        - APICreatePostFunction
+        - Arn
+
+  APIUpdatePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/api.zip
+      Handler: dist/api.updatePost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post/{postId}
+            Method: PUT
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
+
+  APIUpdatePostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIUpdatePostFunction
+        - Arn
+      Principal: "apigateway.amazonaws.com"
+      # SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*"
+
+  APIDeletePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: deployment-packages/api.zip
+      Handler: dist/api.deletePost
+      Runtime: nodejs16.x
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: post/{postId}
+            Method: DELETE
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoTable
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
+
+  APIDeletePostPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt
+        - APIDeletePostFunction
+        - Arn
+      Principal: "apigateway.amazonaws.com"
+
+#### New code addition for CW, SNS, IAM:
+
+#An SNS Topic resource for the email notification:
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: CW alarm Errors
+      TopicName: !Sub "${S3BUCKET}-cw-alarm-errors"
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref Email
+
+
+#A CloudWatch Alarm resource for the Lambda function:
+
+  LambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Alarm for Lambda Errors"
+      AlarmActions:
+        - !Ref SNSTopic
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Dimensions:
+        - Name: FunctionName
+          Value: !GetAtt APIGetPostsFunction.Arn
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+
+
+
+## Lambda IAM Role permissions:
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "LambdaExecutionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "lambda:InvokeFunction"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+        - PolicyName: "DynamoDBFullAccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:*"
+                Resource: "*"
+        - PolicyName: "CloudWatchFullAccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:*"
+                Resource: "*"
+        - PolicyName: "ApigatewayFullAccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "apigateway:*"
+                Resource: "*"
+
+
+##########################################################################
+#   OUTPUTS                                                              #
+##########################################################################
+  
+Outputs:
+  ApiGatewayUrl:
+    Description: "API Gateway base URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+  DynamoDbTable:
+    Value: !Ref DynamoTable
+    Description: DynamoDb Table 
+
+
+  LambdaExecuteRole:
+    Value: {"Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] }
+    Description: LambdaExecutionRole
