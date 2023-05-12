@@ -6,7 +6,7 @@ Parameters:
     Description: 'Required. Bucket for artifacts'
     Type: 'String'
   Email:
-    Description: 'Required. Allows for tagging'
+    Description: 'Required. The email of the person creating this stack. Used in tagging.'
     Type: 'String' 
 Resources:
 ##########################################################################

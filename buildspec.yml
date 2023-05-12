@@ -19,50 +19,48 @@ phases:
     runtime-versions:
       nodejs: 16
     commands:
-      - echo "Installing dependencies..."
+      - echo "$(date -u): Installing dependencies..."
       - npm install
-      - echo "Installing Docusaurus..."
+      - echo "$(date -u): Installing Docusaurus..."
       - cd docs
       - npm install --omit=dev
       - cd ..
 
   pre_build:
     commands:
-      - echo "Linting and running tests..."
+      - echo "$(date -u): Linting and running tests..."
       - npm run lint
       # - npm test # no tests in this repo yet... should add some!
 
   build:
     commands:
-      - echo "Building the Node.js API service..."
+      - echo "$(date -u): Building the Node.js API service..."
       - rm -rf node_modules
       - npm install --omit=dev
       - npm run build --omit=dev
-      - echo "Creating deployment package..."
+      - echo "$(date -u): Creating deployment package..."
       - zip -r deployment-package.zip dist/ node_modules/
-      #- echo "Building the Docusaurus documentation..."
-      #- cd ../docs
-      #- npm run build --omit=dev
-      #- cd ..
+      - echo "$(date -u): Building the Docusaurus documentation..."
+      - cd ../docs
+      - npm run build --omit=dev
+      - cd ..
 
   post_build:
     commands:
-      - echo "Post-build steps..."
-      - echo "Uploading deployment package to S3..."
-      - aws s3 cp deployment-package.zip s3://$S3BUCKET/deployment-packages/
-      - echo "Uploading Docusaurus documentation to S3..."
-      - aws s3 sync docs/build/ s3://$S3BUCKET/docs/
-      - echo "Deploying Lambda function and API Gateway using AWS SAM..."
-      - aws cloudformation package --template-file devops/api-cf-template.yml --output-template-file packaged-template.yml --s3-bucket $S3BUCKET --s3-prefix templates/
-      - aws cloudformation deploy --template-file packaged-template.yml --stack-name my-lambda-stack --capabilities CAPABILITY_NAMED_IAM --parameter-overrides S3BUCKET=$S3BUCKET
-      #- echo "Deploying CloudFront, Cognito, and Lambda@Edge resources using AWS CloudFormation..."
-      #- aws cloudformation package --template-file devops/cloudfront-cognito-lambdaedge.yml --output-template-file packaged-cloudfront-cognito-lambdaedge.yml --s3-bucket ${S3BUCKET}/templates/
-      #- aws cloudformation deploy --template-file packaged-cloudfront-cognito-lambdaedge.yml --stack-name my-cloudfront-cognito-lambdaedge-stack --capabilities CAPABILITY_NAMED_IAM
-
+      - echo "$(date -u): Post-build steps..."
+      - echo "$(date -u): Uploading deployment package to S3..."
+      - aws s3 cp deployment-package.zip s3://$CFNS3BUCKET/deployment-packages/
+      - echo "$(date -u): Uploading Docusaurus documentation to S3..."
+      - echo "$(date -u): Deploying Lambda function and API Gateway using AWS SAM..."
+      - aws cloudformation package --template-file devops/prod-api-cfn.yml --output-template-file packaged-template.yml --s3-bucket $CFNS3BUCKET --s3-prefix templates/
+      - aws cloudformation deploy --template-file packaged-template.yml --stack-name $STACKNAME --capabilities CAPABILITY_NAMED_IAM --parameter-overrides S3BUCKET=$CFNS3BUCKET StackName=$STACKNAME
+      - echo "$(date -u): Syncing the Docusaurus documentation to S3 bucket $STACKNAME-docs"
+      - aws s3 sync docs/build/ s3://$STACKNAME-docs/ --recursive --delete
+      - echo "$(date -u): Clearing the CloudFront distribution cache"
+      - aws cloudfront create-invalidation --distribution-id ${CDN_DISTRIBUTION_ID} --paths '/*'
 artifacts:
   files:
-    - devops/api-cf-template.yml
-    - devops/cloudfront-cognito-lambdaedge.yml
+    - devops/prod-api-cfn.yml
   discard-paths: yes
 
 cache:

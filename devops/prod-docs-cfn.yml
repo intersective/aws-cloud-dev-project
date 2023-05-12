@@ -13,14 +13,14 @@ Metadata:
 Parameters:
   StackName:
     ConstraintDescription: This will be unique string to represent our stack.
-    Default: pcloud-sandbox
+    Default: ""
     Description: A client/project/product unique name for the stack to idnetify later.
       This string can include numbers, lowercase letters, uppercase letters, and hyphens
       (-). It cannot start or end with a hyphen (-).
     Type: String
   AuthStackName:
     ConstraintDescription: This will be unique string to represent our stack.
-    Default: my-auth-stack
+    Default: ""
     Description: A client/project/product unique name for the stack to idnetify later.
       This string can include numbers, lowercase letters, uppercase letters, and hyphens
       (-). It cannot start or end with a hyphen (-).
