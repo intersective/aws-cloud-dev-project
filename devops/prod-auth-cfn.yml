@@ -124,46 +124,46 @@ Resources:
         - !Sub 'https://${StackName}-${AuthDomainPostfix}.${RootDomainName}/logout'
 
   UserPoolDomain:
-    DependsOn: [CustomARecordRoute53RecordSet]
+    # DependsOn: [CustomARecordRoute53RecordSet]
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref UserPool
-      Domain: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
-      # Domain: !Sub
-      #   - "auth-${StackIdSuffix}"
-      #   - StackIdSuffix: !Select
-      #       - 2
-      #       - !Split
-      #         - "/"
-      #         - !Ref AWS::StackId
-      CustomDomainConfig: 
-        CertificateArn: !Ref "CertificateArn"
+      # Domain: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
+      Domain: !Sub
+        - "auth-${StackIdSuffix}"
+        - StackIdSuffix: !Select
+            - 2
+            - !Split
+              - "/"
+              - !Ref AWS::StackId
+      # CustomDomainConfig: 
+      #   CertificateArn: !Ref "CertificateArn"
 
-  Route53RecordSet:
-    DependsOn: [UserPoolDomain]
-    Type: AWS::Route53::RecordSet
-    Properties:
-      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
-      # HostedZoneId: {'Fn::ImportValue':  'PcloudSharedPublicHostedZoneId'}
-      HostedZoneId: !Ref "HostedZoneId"
-      Name: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
-      Type: CNAME
-      TTL: 300
-      ResourceRecords:
-        - !GetAtt UserPoolDomain.CloudFrontDistribution
+  # Route53RecordSet:
+  #   DependsOn: [UserPoolDomain]
+  #   Type: AWS::Route53::RecordSet
+  #   Properties:
+  #     # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
+  #     # HostedZoneId: {'Fn::ImportValue':  'PcloudSharedPublicHostedZoneId'}
+  #     HostedZoneId: !Ref "HostedZoneId"
+  #     Name: !Sub '${StackName}-${AuthDomainPostfix}.${RootDomainName}'
+  #     Type: CNAME
+  #     TTL: 300
+  #     ResourceRecords:
+  #       - !GetAtt UserPoolDomain.CloudFrontDistribution
 
 
-  CustomARecordRoute53RecordSet:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
-      # HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
-      HostedZoneId: !Ref "HostedZoneId"
-      Name: !Sub '${RootDomainName}'
-      Type: A
-      TTL: 60
-      ResourceRecords:
-        - 127.0.0.1
+  # CustomARecordRoute53RecordSet:
+  #   Type: AWS::Route53::RecordSet
+  #   Properties:
+  #     # HostedZoneName: {'Fn::ImportValue': !Sub '${StackName}-RootDomainName-${Env}'}
+  #     # HostedZoneId: {'Fn::ImportValue': !Sub '${StackName}-PublicHostedZoneId-${Env}'}
+  #     HostedZoneId: !Ref "HostedZoneId"
+  #     Name: !Sub '${RootDomainName}'
+  #     Type: A
+  #     TTL: 60
+  #     ResourceRecords:
+  #       - 127.0.0.1
 
 
 

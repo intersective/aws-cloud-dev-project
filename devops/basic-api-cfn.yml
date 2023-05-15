@@ -6,11 +6,11 @@ Parameters:
     Description: 'Required. Bucket for artifacts'
     Type: 'String'
   Email:
-    Description: 'Required. The email of the person creating this stack. Used in tagging.'
+    Description: 'Required. Allows for tagging'
     Type: 'String' 
 Resources:
 ##########################################################################
-#   DynamoDB                                                            #
+#   DynamoDB                                                             #
 ##########################################################################
   DynamoTable:
     Type: AWS::DynamoDB::Table
@@ -33,11 +33,9 @@ Resources:
   APIGetPostsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/api.zip
-      Handler: dist/api.getAllPosts
-      Runtime: nodejs16.x
+      CodeUri: ../dist 
+      Handler: api.getAllPosts
+      Runtime: nodejs18.x
       Events:
         ApiGateway:
           Type: Api
@@ -65,11 +63,9 @@ Resources:
   APIGetPostFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/api.zip
-      Handler: dist/api.getPost
-      Runtime: nodejs16.x
+      CodeUri: ../dist 
+      Handler: api.getPost
+      Runtime: nodejs18.x
       Events:
         ApiGateway:
           Type: Api
@@ -97,11 +93,9 @@ Resources:
   APICreatePostFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/api.zip
-      Handler: dist/api.createPost
-      Runtime: nodejs16.x
+      CodeUri: ../dist
+      Handler: api.createPost
+      Runtime: nodejs18.x
       Events:
         ApiGateway:
           Type: Api
@@ -129,11 +123,9 @@ Resources:
   APIUpdatePostFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/api.zip
-      Handler: dist/api.updatePost
-      Runtime: nodejs16.x
+      CodeUri: ../dist 
+      Handler: api.updatePost
+      Runtime: nodejs18.x
       Events:
         ApiGateway:
           Type: Api
@@ -162,11 +154,9 @@ Resources:
   APIDeletePostFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: 
-        Bucket: !Sub "${S3BUCKET}"
-        Key: deployment-packages/api.zip
-      Handler: dist/api.deletePost
-      Runtime: nodejs16.x
+      CodeUri: ../dist
+      Handler: api.deletePost
+      Runtime: nodejs18.x
       Events:
         ApiGateway:
           Type: Api
@@ -190,7 +180,6 @@ Resources:
         - APIDeletePostFunction
         - Arn
       Principal: "apigateway.amazonaws.com"
-
 
 
 ##########################################################################

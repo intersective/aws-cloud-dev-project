@@ -14,54 +14,64 @@
 
 version: 0.2
 
+
+env:
+  variables:
+    DOCS_S3_BUCKET: ""
+    DOCS_CDN_DISTRIBUTION_ID: ""
+    CUSTOM_USER_NAME: ""
+    CFN_S3_BUCKET: ""
+    API_STACK_NAME: ""
+    AUTH_STACK_NAME: ""
+    EMAIL: ""
+
+
 phases:
   install:
     runtime-versions:
-      nodejs: 16
+      nodejs: 18
     commands:
-      - echo "$(date -u): Installing dependencies..."
+      - echo "Installing dependencies..."
       - npm install
-      - echo "$(date -u): Installing Docusaurus..."
+      - echo "Installing Docusaurus..."
       - cd docs
       - npm install --omit=dev
       - cd ..
 
   pre_build:
     commands:
-      - echo "$(date -u): Linting and running tests..."
+      - echo "Linting and running tests..."
       - npm run lint
       # - npm test # no tests in this repo yet... should add some!
 
   build:
     commands:
-      - echo "$(date -u): Building the Node.js API service..."
+      - echo "Building the Node.js API service..."
       - rm -rf node_modules
       - npm install --omit=dev
+      - npm install -g typescript
+      - npm i --save-dev @types/node
       - npm run build --omit=dev
-      - echo "$(date -u): Creating deployment package..."
-      - zip -r deployment-package.zip dist/ node_modules/
-      - echo "$(date -u): Building the Docusaurus documentation..."
-      - cd ../docs
+      - echo "Creating deployment package..."
+      - mv node_modules dist/
+      - echo "Building the Docusaurus documentation..."
+      - cd docs
       - npm run build --omit=dev
       - cd ..
 
+
   post_build:
     commands:
-      - echo "$(date -u): Post-build steps..."
-      - echo "$(date -u): Uploading deployment package to S3..."
-      - aws s3 cp deployment-package.zip s3://$CFNS3BUCKET/deployment-packages/
-      - echo "$(date -u): Uploading Docusaurus documentation to S3..."
-      - echo "$(date -u): Deploying Lambda function and API Gateway using AWS SAM..."
-      - aws cloudformation package --template-file devops/prod-api-cfn.yml --output-template-file packaged-template.yml --s3-bucket $CFNS3BUCKET --s3-prefix templates/
-      - aws cloudformation deploy --template-file packaged-template.yml --stack-name $STACKNAME --capabilities CAPABILITY_NAMED_IAM --parameter-overrides S3BUCKET=$CFNS3BUCKET StackName=$STACKNAME
-      - echo "$(date -u): Syncing the Docusaurus documentation to S3 bucket $STACKNAME-docs"
-      - aws s3 sync docs/build/ s3://$STACKNAME-docs/ --recursive --delete
-      - echo "$(date -u): Clearing the CloudFront distribution cache"
-      - aws cloudfront create-invalidation --distribution-id ${CDN_DISTRIBUTION_ID} --paths '/*'
-artifacts:
-  files:
-    - devops/prod-api-cfn.yml
-  discard-paths: yes
+### API related 
+      - echo "Post-build steps..."
+      - aws cloudformation package --template-file devops/ind-api-cfn.yml --output-template-file tmp/api-pkg.yml --s3-bucket $CFN_S3_BUCKET --s3-prefix deployment-packages
+      - aws cloudformation deploy --template-file tmp/api-pkg.yml --stack-name $API_STACK_NAME --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides StackName=$API_STACK_NAME AuthStackName=$AUTH_STACK_NAME S3BUCKET=$CFN_S3_BUCKET Email=$EMAIL
+
+### Docs APP related 
+      - echo "Uploading Docusaurus documentation to S3..."
+      - aws s3 sync docs/build/ s3://$DOCS_S3_BUCKET/     
+      - echo "Invalidating CloudFront to traffic new code..."
+      - aws cloudfront create-invalidation --distribution-id $DOCS_CDN_DISTRIBUTION_ID --paths "/*"
 
 cache:
   paths:
