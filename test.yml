@@ -1,0 +1,268 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A sample Node.js-based API service on AWS Lambda and API Gateway
+Parameters:
+  S3BUCKET:
+    Description: 'Required. Bucket for artifacts'
+    Type: 'String'
+  StackName:
+    Description: 'Required. Name of CF Stack'
+    Type: 'String'
+  MyRandomParameter:
+    Description: A random number parameter
+    Type: String
+    Default: !Select [0, !Split ["-", !Join ["-", ["0", !Random "", !Random "", !Random ""]]]]
+
+
+Resources:
+  DocsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${StackName}-docs'
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration: 
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+        - AbortIncompleteMultipartUpload:
+            DaysAfterInitiation: 7
+          Status: Enabled
+        - NoncurrentVersionExpirationInDays: 30
+          Status: Enabled
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: MyDocusaurusUserPool
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+
+  CognitoUserPoolClient:
+    DependsOn: [CognitoUserPool]
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: MyDocusaurusUserPoolClient
+      GenerateSecret: False
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - !Sub "https://${StackName}-auth/callback"
+      LogoutURLs:
+        - !Sub "https://${StackName}-auth/logout"
+      AllowedOAuthFlowsUserPoolClient: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  CognitoUserPoolDomain: 
+    Type: AWS::Cognito::UserPoolDomain 
+    Properties:
+      UserPoolId: !Ref CognitoUserPool 
+      Domain: !Sub "${StackName}-auth"
+
+  LambdaEdgeFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: [CognitoUserPoolClient, LambdaEdgeFunctionRole]
+    Properties:
+      CodeUri: 
+        Bucket: !Sub "${S3BUCKET}"
+        Key: lambdaedge/authorizer.zip
+      Handler: index.handler
+      Role: !GetAtt LambdaEdgeFunctionRole.Arn
+      Runtime: nodejs16.x
+      Environment:
+        Variables:
+          COGNITO_CLIENTID: !Ref CognitoUserPoolClient
+          COGNITO_USERPOOLDOMAIN: !Sub "${StackName}-auth"
+
+  LambdaEdgeVersion:
+    Type: Custom::LatestLambdaVersion
+    Properties:
+      ServiceToken: !GetAtt PublishLambdaVersion.Arn
+      FunctionName: !Ref LambdaEdgeFunction
+      Nonce: !Ref MyRandomParameter
+
+  PublishLambdaVersion:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs14.x
+      Role: !GetAtt PublishLambdaVersionRole.Arn
+      Code:
+        ZipFile: |
+          const {Lambda} = require('aws-sdk')
+          const {send, SUCCESS, FAILED} = require('cfn-response')
+          const lambda = new Lambda()
+          exports.handler = (event, context) => {
+            const {RequestType, ResourceProperties: {FunctionName}} = event
+            if (RequestType == 'Delete') return send(event, context, SUCCESS)
+            lambda.publishVersion({FunctionName}, (err, {FunctionArn}) => {
+              err
+                ? send(event, context, FAILED, err)
+                : send(event, context, SUCCESS, {FunctionArn})
+            })
+          }
+  PublishLambdaVersionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: PublishVersion
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:PublishVersion
+                Resource: "*"
+
+
+
+  LambdaEdgeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaEdgeFunctionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+
+  DocsCloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub '${StackName}-oai'
+
+  DocsBucketPolicy:
+    DependsOn: [DocsCloudFrontOriginAccessIdentity]
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DocsBucket
+      PolicyDocument:
+        Statement:
+        - Sid: S3-Bucket-Accesible via CDN OAI only
+          Action: 's3:GetObject'
+          Effect: Allow
+          Resource: !Sub 'arn:aws:s3:::${DocsBucket}/*'
+          Principal:
+            CanonicalUser: !GetAtt DocsCloudFrontOriginAccessIdentity.S3CanonicalUserId 
+        - Sid: AllowSSLRequestsOnly
+          Effect: Deny
+          Principal: '*'
+          Action: 's3:*'
+          Resource:
+          - !Sub 'arn:aws:s3:::${DocsBucket}'
+          - !Sub 'arn:aws:s3:::${DocsBucket}/*'
+          Condition:
+            Bool:
+              'aws:SecureTransport': false
+
+  DocsCloudFrontDistribution:
+    DependsOn: [LambdaEdgeFunction, DocsCloudFrontOriginAccessIdentity, DocsCloudFrontSecurityHeaderResponse]
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+        - DomainName: !GetAtt DocsBucket.DomainName
+          Id: !Sub '${StackName}-docs'
+          S3OriginConfig:
+            OriginAccessIdentity: 
+               Fn::Join:
+                - ''
+                -
+                  - 'origin-access-identity/cloudfront/'
+                  - Ref: DocsCloudFrontOriginAccessIdentity
+        Comment: !Sub '${StackName}-distribution'
+        CacheBehaviors:
+          - LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeVersion.FunctionArn
+        DefaultCacheBehavior:
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !GetAtt LambdaEdgeVersion.FunctionArn
+          Compress: true
+          DefaultTTL: 3600
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          MaxTTL: 86400
+          MinTTL: 60
+          TargetOriginId: !Sub '${StackName}-docs'
+          ViewerProtocolPolicy: 'redirect-to-https'
+          ResponseHeadersPolicyId: !Ref DocsCloudFrontSecurityHeaderResponse
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: 'PriceClass_All'
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  # Specifying the CloudFront Distribution Security Response Header
+  DocsCloudFrontSecurityHeaderResponse:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties: 
+      ResponseHeadersPolicyConfig: 
+        Comment: !Sub '${StackName}-docs'
+        Name: !Sub '${StackName}-docs'
+        SecurityHeadersConfig: 
+          StrictTransportSecurity: 
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+            Preload: true
+
+Outputs:
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+  CloudFrontDistributionDomain:
+    Description: "CloudFront Distribution Domain Name"
+    Value: !GetAtt DocsCloudFrontDistribution.DomainName
