@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: CloudFormation template for Lambda functions
+
+Parameters:
+  S3ObjectUrl:
+    Type: String
+    Description: HTTPS URL of the .zip file containing the GetPost function code.
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: ARN of the IAM role to be attached to the Lambda function.
+  TableName:
+    Type: String
+    Description: Name of the DynamoDB Table
+
+Resources:
+  APIGateWay:
+    Type: AWS::Serverless::Api
+    Properties:
+      OpenApiVersion: 3.0.1
+      StageName: pcloud-dev
+
+  GetPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket:
+          !Select [0, !Split [".", !Select [2, !Split ["/", !Ref S3ObjectUrl]]]]
+        Key: !Join
+          - "/"
+          - - !Select [3, !Split ["/", !Ref S3ObjectUrl]]
+            - !Select [4, !Split ["/", !Ref S3ObjectUrl]]
+      Handler: api.getPost
+      Runtime: nodejs18.x
+      Role: !Ref LambdaExecutionRoleArn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /post/{postId}
+            Method: GET
+            RestApiId:
+              Ref: APIGateWay
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Sub "${StackName}-${TableName}-${Env}"
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBReadPolicy:
+            TableName: !Sub "${StackName}-${TableName}-${Env}"
+
+  CreatePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket:
+          !Select [0, !Split [".", !Select [2, !Split ["/", !Ref S3ObjectUrl]]]]
+        Key: !Join
+          - "/"
+          - - !Select [3, !Split ["/", !Ref S3ObjectUrl]]
+            - !Select [4, !Split ["/", !Ref S3ObjectUrl]]
+      Handler: api.createPost
+      Runtime: nodejs18.x
+      Role: !Ref LambdaExecutionRoleArn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /post
+            Method: POST
+            RestApiId:
+              Ref: APIGateWay
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Sub "${StackName}-${TableName}-${Env}"
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Sub "${StackName}-${TableName}-${Env}"
+
+  UpdatePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket:
+          !Select [0, !Split [".", !Select [2, !Split ["/", !Ref S3ObjectUrl]]]]
+        Key: !Join
+          - "/"
+          - - !Select [3, !Split ["/", !Ref S3ObjectUrl]]
+            - !Select [4, !Split ["/", !Ref S3ObjectUrl]]
+      Handler: api.updatePost
+      Runtime: nodejs18.x
+      Role: !Ref LambdaExecutionRoleArn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /post/{postId}
+            Method: PUT
+            RestApiId:
+              Ref: APIGateWay
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Sub "${StackName}-${TableName}-${Env}"
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Sub "${StackName}-${TableName}-${Env}"
+
+  DeletePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket:
+          !Select [0, !Split [".", !Select [2, !Split ["/", !Ref S3ObjectUrl]]]]
+        Key: !Join
+          - "/"
+          - - !Select [3, !Split ["/", !Ref S3ObjectUrl]]
+            - !Select [4, !Split ["/", !Ref S3ObjectUrl]]
+      Handler: api.deletePost
+      Runtime: nodejs18.x
+      Role: !Ref LambdaExecutionRoleArn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /post/{postId}
+            Method: DELETE
+            RestApiId:
+              Ref: APIGateWay
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Sub "${StackName}-${TableName}-${Env}"
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBCrudPolicy:
+            TableName: !Sub "${StackName}-${TableName}-${Env}"
+
+  GetAllPostsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket:
+          !Select [0, !Split [".", !Select [2, !Split ["/", !Ref S3ObjectUrl]]]]
+        Key: !Join
+          - "/"
+          - - !Select [3, !Split ["/", !Ref S3ObjectUrl]]
+            - !Select [4, !Split ["/", !Ref S3ObjectUrl]]
+      Handler: api.getAllPosts
+      Runtime: nodejs18.x
+      Role: !Ref LambdaExecutionRoleArn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /posts
+            Method: GET
+            RestApiId:
+              Ref: APIGateWay
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Sub "${StackName}-${TableName}-${Env}"
+      Policies:
+        ## Read more about SAM Policy templates at:
+        ## https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - DynamoDBReadPolicy:
+            TableName: !Sub "${StackName}-${TableName}-${Env}"
+
+Outputs:
+  GetPostFunctionArn:
+    Value: !GetAtt GetPostFunction.Arn
+    Description: Arn for Lambda Function GetPostFunction
+    Export:
+      Name: !Sub '${StackName}-GetPostFunctionArn-${Env}'
+  CreatePostFunctionArn:
+    Value: !GetAtt CreatePostFunction.Arn
+    Description: Arn for Lambda Function CreatePostFunction
+    Export:
+      Name: !Sub '${StackName}-CreatePostFunctionArn-${Env}'
+  UpdatePostFunctionArn:
+    Value: !GetAtt UpdatePostFunction.Arn
+    Description: Arn for Lambda Function UpdatePostFunction
+    Export:
+      Name: !Sub '${StackName}-UpdatePostFunctionArn-${Env}'
+  DeletePostFunctionArn:
+    Value: !GetAtt DeletePostFunction.Arn
+    Description: Arn for Lambda Function DeletePostFunction
+    Export:
+      Name: !Sub '${StackName}-DeletePostFunctionArn-${Env}'
+  GetAllPostsFunctionArn:
+    Value: !GetAtt GetAllPostsFunction.Arn
+    Description: Arn for Lambda Function GetAllPostsFunction
+    Export:
+      Name: !Sub '${StackName}-GetAllPostsFunctionArn-${Env}'

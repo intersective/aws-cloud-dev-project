@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Description: cloudformation template for Practera Cloud Projects web app +auth + cognito infrastructure
+
+Metadata:
+  Authors:
+    Description: Based on AWS best practise.
+  License:
+    Description:
+      Copyright 2023 Intersective PTY LTD and its affiliates. All Rights
+      Reserved.
+
+Parameters:
+  StackName:
+    ConstraintDescription: This will be unique string to represent our stack.
+    Default: "pcloud"
+    Description:
+      A client/project/product unique name for the stack to idnetify later.
+      This string can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  AuthStackName:
+    ConstraintDescription: This will be unique string to represent our stack.
+    Default: ""
+    Description:
+      A client/project/product unique name for the stack to idnetify later.
+      This string can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+
+  ## You are unlikely to want to override these parameters 
+  SemanticVersion:
+    Type: String
+    Description: Semantic version of the back end
+    Default: 2.1.5
+  HttpHeaders:
+    Type: String
+    Description: The HTTP headers to set on all responses from CloudFront. Defaults are illustrations only and contain a report-only Cloud Security Policy -- adjust for your application
+    Default: >-
+      {
+        "Content-Security-Policy-Report-Only": "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "Referrer-Policy": "same-origin",
+        "X-XSS-Protection": "1; mode=block",
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff"
+      }
+  AppStackPostfix:
+    Description: "Appended to the stack name to denote the app stacks"
+    Type: String
+    Default: app
+  RootDomainName:
+    Description: "The root domain name used for the sites"
+    Type: String
+    Default: pcloud.practeraco.de
+  DocsCloudFrontOriginAccessIdentity:
+    Type: String
+    Description: OAI created from Lesson 8.1
+
+Resources:
+  Route53RecordV2:
+    DependsOn: [DocusaurusCloudFrontDistribution]
+    Type: "AWS::Route53::RecordSetGroup"
+    Properties:
+      HostedZoneId:
+        { "Fn::ImportValue": !Sub "${AuthStackName}-HostedZoneId-${Env}" }
+      RecordSets:
+        - Name: !Sub "${Env}-${StackName}-${AppStackPostfix}.${RootDomainName}"
+          Type: CNAME
+          TTL: "3200"
+          ResourceRecords:
+            - !GetAtt 'DocusaurusCloudFrontDistribution.DomainName'
+
+  LambdaEdgeProtection:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:520945424137:applications/cloudfront-authorization-at-edge
+        SemanticVersion: !Ref SemanticVersion
+      Parameters:
+        CreateCloudFrontDistribution: "false"
+        HttpHeaders: !Ref HttpHeaders
+        AlternateDomainNames: !Sub "${Env}-${StackName}-${AppStackPostfix}.${RootDomainName}"
+        UserPoolArn:
+          { "Fn::ImportValue": !Sub "${AuthStackName}-UserPoolArn-${Env}" }
+        UserPoolClientId:
+          { "Fn::ImportValue": !Sub "${AuthStackName}-UserPoolClientId-${Env}" }
+        EnableSPAMode:
+          { "Fn::ImportValue": !Sub "${AuthStackName}-EnableSPAMode-${Env}" }
+        OAuthScopes:
+          { "Fn::ImportValue": !Sub "${AuthStackName}-OAuthScopes-${Env}" }
+
+  DocusaurusCloudFrontDistribution:
+    DependsOn: [LambdaEdgeProtection]
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Sub "${Env}-${StackName}-${AppStackPostfix}.${RootDomainName}"
+        Comment: "Cloudfront Origin identity for DocusaurusS3BUCKET"
+        CacheBehaviors:
+          - PathPattern: /parseauth
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.ParseAuthHandler
+            TargetOriginId: dummy-origin
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: /refreshauth
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.RefreshAuthHandler
+            TargetOriginId: dummy-origin
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: /signout
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.SignOutHandler
+            TargetOriginId: dummy-origin
+            ViewerProtocolPolicy: redirect-to-https
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            QueryString: true
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.CheckAuthHandler
+            - EventType: origin-response
+              LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.HttpHeadersHandler
+          TargetOriginId: !Sub "${StackName}-${AppStackPostfix}"
+          ViewerProtocolPolicy: "redirect-to-https"
+          ResponseHeadersPolicyId:
+            { "Fn::ImportValue": !Sub "${StackName}-DocsCloudFrontSecurityHeaderResponse-${Env}" }
+        DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /doc/404.html
+          # - ErrorCode: 403
+          #   ResponseCode: 200
+          #   ResponsePagePath: /index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - DomainName: { "Fn::ImportValue": !Sub "${StackName}-S3MainBucketRegionalDomainName-${Env}" }
+            Id: !Sub "${StackName}-${AppStackPostfix}"
+            OriginPath: "/doc"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${DocsCloudFrontOriginAccessIdentity}'
+          # - DomainName: example.org # Dummy origin is used for Lambda@Edge functions, keep this as-is
+          - DomainName: { "Fn::ImportValue": !Sub "${StackName}-S3MainBucketRegionalDomainName-${Env}" }
+            Id: dummy-origin
+            CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
+        PriceClass: "PriceClass_All"
+        ViewerCertificate:
+          AcmCertificateArn:
+            { "Fn::ImportValue": !Sub "${AuthStackName}-CertificateArn-${Env}" }
+          MinimumProtocolVersion: "TLSv1.2_2021" # OLD VALUE:'TLSv1.2_2019'
+          SslSupportMethod: "sni-only"

@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template for Cloudfront
+
+Parameters:
+  S3BucketRegionalDomainName:
+    Type: String
+    Description: S3 Bucket RegionalDomainName for Cloudfront Domain Name
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+
+Resources:
+  DocsCloudFrontOriginAccessIdentity:
+    Type: "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "${StackName}-oai-${Env}"
+
+  DocsCloudFrontDistribution:
+    DependsOn:
+      [DocsCloudFrontOriginAccessIdentity, DocsCloudFrontSecurityHeaderResponse]
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !Ref S3BucketRegionalDomainName
+            Id: !Sub "${StackName}-docs-${Env}"
+            OriginPath: "/doc"
+            S3OriginConfig:
+              OriginAccessIdentity:
+                Fn::Join:
+                  - ""
+                  - - "origin-access-identity/cloudfront/"
+                    - !Ref DocsCloudFrontOriginAccessIdentity
+        Comment: !Sub "${StackName}-distribution-${Env}"
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          DefaultTTL: 3600
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          MaxTTL: 86400
+          MinTTL: 60
+          TargetOriginId: !Sub "${StackName}-docs-${Env}"
+          ViewerProtocolPolicy: "redirect-to-https"
+          ResponseHeadersPolicyId: !Ref DocsCloudFrontSecurityHeaderResponse
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: "PriceClass_All"
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  # Specifying the CloudFront Distribution Security Response Header
+  DocsCloudFrontSecurityHeaderResponse:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Comment: !Sub "${StackName}-docs-${Env}"
+        Name: !Sub "${StackName}-docs-${Env}"
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+            Preload: true
+
+Outputs:
+  DocsCloudFrontOaiS3CanonUserId:
+    Description: For reference S3 Bucket DocsCloudFrontOaiS3CanonUserId
+    Value: !GetAtt DocsCloudFrontOriginAccessIdentity.S3CanonicalUserId
+    Export:
+      Name: !Sub '${StackName}-DocsCloudFrontOaiS3CanonUserId-${Env}'
+  DomainNameDocsCloudFrontDistribution:
+    Description: For CDN DomainName
+    Value: !GetAtt DocsCloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${StackName}-DomainNameDocsCloudFrontDistribution-${Env}'
+  DocsCloudFrontSecurityHeaderResponse:
+    Description: For Security Header Response
+    Value: !Ref DocsCloudFrontSecurityHeaderResponse
+    Export:
+      Name: !Sub '${StackName}-DocsCloudFrontSecurityHeaderResponse-${Env}'
+  DocsCloudFrontOriginAccessIdentity:
+    Description: For CDN Origin Access Identity
+    Value: !Ref DocsCloudFrontOriginAccessIdentity
+    Export:
+      Name: !Sub '${StackName}-DocsCloudFrontOriginAccessIdentity-${Env}'
+      

@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template for Lambda use case IAM role with DynamoDB access
+
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    Description: Name of the Lambda function that will use this IAM role
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Description: IAM Role for Lambda Function
+    Properties:
+      RoleName: !Sub '${StackName}-${LambdaFunctionName}-${Env}'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSLambdaExecute" 
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+
+Outputs:
+  LambdaExecutionRoleArn:
+    Description: The ARN of the IAM role for the Lambda function
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${StackName}-LambdaExecutionRoleArn-${Env}'

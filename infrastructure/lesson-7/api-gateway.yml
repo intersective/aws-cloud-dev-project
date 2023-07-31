@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Sample CloudFormation Template for API Gateway and Lambda Integration
+
+Parameters:
+  GetPostFunctionArn:
+    Type: String
+    Description: ARN of the Lambda Function GetPostFunction
+  CreatePostFunctionArn:
+    Type: String
+    Description: ARN of the Lambda Function CreatePostFunction
+  UpdatePostFunctionArn:
+    Type: String
+    Description: ARN of the Lambda Function UpdatePostFunction
+  DeletePostFunctionArn:
+    Type: String
+    Description: ARN of the Lambda Function DeletePostFunction
+  GetAllPostsFunctionArn:
+    Type: String
+    Description: ARN of the Lambda Function GetAllPostsFunction
+
+Resources:
+
+  GetPostPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref GetPostFunctionArn
+      Action: 'lambda:InvokeFunction'
+      Principal: "apigateway.amazonaws.com"
+
+  CreatePostPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref CreatePostFunctionArn
+      Action: 'lambda:InvokeFunction'
+      Principal: "apigateway.amazonaws.com"
+
+  UpdatePostPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref UpdatePostFunctionArn
+      Action: 'lambda:InvokeFunction'
+      Principal: "apigateway.amazonaws.com"
+
+  DeletePostPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref DeletePostFunctionArn
+      Action: 'lambda:InvokeFunction'
+      Principal: "apigateway.amazonaws.com"
+
+  GetAllPostsPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref GetAllPostsFunctionArn
+      Action: 'lambda:InvokeFunction'
+      Principal: "apigateway.amazonaws.com"

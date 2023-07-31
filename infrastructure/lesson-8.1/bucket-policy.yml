@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Sample CloudFormation Template for S3 Bucket Policy
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Name of S3 Bucket to apply Policy
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+  DocsCloudFrontOaiS3CanonUserId:
+    Description: DocsCloudFrontOriginAccessIdentity S3CanonicalUserId.
+    Type: String
+    
+Resources:
+  DocsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Statement:
+          - Sid: S3-Bucket-Accesible via CDN OAI only
+            Action: "s3:GetObject"
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+            Principal:
+              CanonicalUser: !Ref DocsCloudFrontOaiS3CanonUserId
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}"
+              - !Sub "arn:aws:s3:::${BucketName}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false

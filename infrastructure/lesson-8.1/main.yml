@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template Docusaurus Setup
+
+Parameters:
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+  BucketName:
+    Type: String
+    Description: Name of S3 Bucket to apply Policy
+  S3BucketRegionalDomainName:
+    Type: String
+    Description: S3 Bucket RegionalDomainName for Cloudfront Domain Name
+
+Resources:
+
+  BucketPolicyStack:
+    DependsOn: [CloudFrontStack]
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./bucket-policy.yml
+      Parameters:
+        BucketName: !Ref BucketName
+        StackName: !Ref StackName
+        Env: !Ref Env
+        DocsCloudFrontOaiS3CanonUserId: !GetAtt CloudFrontStack.Outputs.DocsCloudFrontOaiS3CanonUserId
+
+  CloudFrontStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./cdn.yml
+      Parameters:
+        S3BucketRegionalDomainName: !Ref S3BucketRegionalDomainName
+        StackName: !Ref StackName
+        Env: !Ref Env

@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: cloudformation template for Practera Cloud Projects web app + auth + cognito infrastructure
+
+Metadata:
+  Authors:
+    Description: Based on AWS best practise.
+  License:
+    Description: Copyright 2023 Intersective PTY LTD and its affiliates. All Rights
+      Reserved.
+
+Parameters:
+  StackName:
+    ConstraintDescription: This will be unique string to represent our stack.
+    Default: pcloud-sandbox
+    Description: A client/project/product unique name for the stack to identify later.
+      This string can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  UserEmail:
+    Description: Email of Initial user to add to pool
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+  CertificateArn:
+    Type: String
+    Description: to pass in a certificate ARN manually
+    Default: "arn:aws:acm:us-east-1:320980967765:certificate/380362bf-8908-4f05-90b5-9049f3cbca97"
+  HostedZoneId:
+    Type: String 
+    Description: to pass in a hosted zone ID manually
+    Default: "Z01303651J6RNITKN4O4O"
+
+  ### You are unlikely to want to change these parameters
+  EnableSPAMode:
+    Type: String
+    Description: Set to 'false' to disable SPA-specific features (i.e. when deploying a static site that won't interact with logout/refresh)
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  OAuthScopes:
+    Type: CommaDelimitedList
+    Description: The OAuth scopes to request the User Pool to add to the access token JWT
+    Default: "phone, email, profile, openid, aws.cognito.signin.user.admin"
+  RootDomainName:
+    Description: 'The root domain name used for the sites'
+    Type: String
+    Default: pcloud.practeraco.de
+  AuthDomainPostfix:
+    Description: 'Cognito Auth Domain Postfix'
+    Type: String
+    Default: auth
+  PoolNamePostfix:
+    Description: 'The suffix used with the userpool stack'
+    Type: String
+    Default: userpool
+
+Conditions:
+  GenerateClientSecret: !Equals
+    - EnableSPAMode
+    - "false"
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${StackName}-${PoolNamePostfix}'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: False
+          RequireLowercase: False
+          RequireNumbers: False
+          RequireSymbols: False
+      Schema:
+       - Name: email
+         Required: true
+         Mutable: true
+         AttributeDataType: String
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameAttributes:
+        - email
+  
+  UserPoolClient:
+    DependsOn: [UserPool]
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      PreventUserExistenceErrors: ENABLED
+      GenerateSecret: !If
+        - GenerateClientSecret
+        - true
+        - false
+      AllowedOAuthScopes: !Ref OAuthScopes
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        # The following sentinel value will be replaced by Auth@Edge with the CloudFront domain name (if you let Auth@Edge create the CloudFront distribution)
+        # - https://example.com/will-be-replaced
+        - !Sub 'https://${StackName}-${AuthDomainPostfix}.${RootDomainName}/callback'
+
+      LogoutURLs:
+        # The following sentinel value will be replaced by Auth@Edge with the CloudFront domain name (if you let Auth@Edge create the CloudFront distribution)
+        # - https://example.com/will-be-replaced
+        - !Sub 'https://${StackName}-${AuthDomainPostfix}.${RootDomainName}/logout'
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Sub
+        - "auth-${StackIdSuffix}"
+        - StackIdSuffix: !Select
+            - 2
+            - !Split
+              - "/"
+              - !Ref AWS::StackId
+
+  User:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      Username: !Sub '${UserEmail}'
+      UserPoolId: !Ref UserPool
+      DesiredDeliveryMediums: 
+        - EMAIL
+
+Outputs:
+  UserPoolArn:
+    Description: User Pool Arn
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub '${StackName}-UserPoolArn-${Env}'
+
+  UserPoolClientId:
+    Description: User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${StackName}-UserPoolClientId-${Env}'
+
+  OAuthScopes:
+    Description: OAuth Scopes
+    Value: !Join [",", !Ref OAuthScopes]
+    Export:
+      Name: !Sub '${StackName}-OAuthScopes-${Env}'
+
+  EnableSPAMode:
+    Description: Enable SPA Mode
+    Value: !Ref EnableSPAMode
+    Export:
+      Name: !Sub '${StackName}-EnableSPAMode-${Env}'
+
+  HostedZoneId:
+    Description: HostedZoneId
+    Value: !Ref HostedZoneId
+    Export:
+      Name: !Sub '${StackName}-HostedZoneId-${Env}'
+
+  CertificateArn:
+    Description: CertificateArn
+    Value: !Ref CertificateArn
+    Export:
+      Name: !Sub '${StackName}-CertificateArn-${Env}'

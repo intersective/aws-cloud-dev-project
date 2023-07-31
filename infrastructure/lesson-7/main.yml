@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for Lambda use case IAM role with DynamoDB access
+
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    Description: Name of the Lambda function that will use this IAM role
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+  S3ObjectUrl:
+    Type: String
+    Description: HTTPS URL of the .zip file containing the GetPost function code.
+  TableName:
+    Type: String
+    Description: Name of the DynamoDB Table
+
+Resources:
+
+  IAMRoleStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./iam-role.yml
+      Parameters:
+        LambdaFunctionName: !Ref LambdaFunctionName
+        StackName: !Ref StackName
+        Env: !Ref Env
+
+  LambdaFnStack:
+    DependsOn: [IAMRoleStack]
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./lambda-fn.yml
+      Parameters:
+        S3ObjectUrl: !Ref S3ObjectUrl
+        StackName: !Ref StackName
+        Env: !Ref Env
+        LambdaExecutionRoleArn: !GetAtt IAMRoleStack.Outputs.LambdaExecutionRoleArn
+        TableName: !Ref TableName
+  
+  DynamoDbStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./dynamodb.yml
+      Parameters:
+        TableName: !Ref TableName
+        StackName: !Ref StackName
+        Env: !Ref Env
+
+  APIGatewayStack:
+    DependsOn: [LambdaFnStack]
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./api-gateway.yml
+      Parameters:
+        GetPostFunctionArn: !GetAtt LambdaFnStack.Outputs.GetPostFunctionArn
+        CreatePostFunctionArn: !GetAtt LambdaFnStack.Outputs.CreatePostFunctionArn
+        UpdatePostFunctionArn: !GetAtt LambdaFnStack.Outputs.UpdatePostFunctionArn
+        DeletePostFunctionArn: !GetAtt LambdaFnStack.Outputs.DeletePostFunctionArn
+        GetAllPostsFunctionArn: !GetAtt LambdaFnStack.Outputs.GetAllPostsFunctionArn
+

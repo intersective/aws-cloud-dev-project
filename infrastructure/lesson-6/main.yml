@@ -1,0 +1,61 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 cloudformation template storage-  for Practera Cloud Projects infrastructure
+
+Metadata:
+  Authors:
+    Description: Based on AWS best practise.
+  License:
+    Description: Copyright 2022 Intersective PTY LTD and its affiliates. All Rights
+      Reserved.
+
+Parameters:
+  BucketName:
+    Type: String
+  StackName:
+    Default: pcloud
+    Type: String
+  Env:
+    Description: Environment type.
+    Default: dev
+    Type: String
+    ConstraintDescription: must specify dev,test,live.
+
+Resources:
+
+  S3MainBucket:
+    Type: "AWS::S3::Bucket"
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub '${StackName}-${BucketName}-${Env}'
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration: 
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+        - AbortIncompleteMultipartUpload:
+            DaysAfterInitiation: 7
+          Status: Enabled
+        - NoncurrentVersionExpirationInDays: 30
+          Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+Outputs:
+  S3MainBucketRef:
+    Description: For reference S3 Bucket
+    Value: !Ref S3MainBucket
+    Export:
+      Name: !Sub '${StackName}-S3MainBucketRef-${Env}'
+  S3MainBucketRegionalDomainName:
+    Description: For reference S3 Bucket
+    Value: !GetAtt S3MainBucket.RegionalDomainName
+    Export:
+      Name: !Sub '${StackName}-S3MainBucketRegionalDomainName-${Env}'
