@@ -354,7 +354,7 @@ main() {
     fi
 
     if [[ "$ACTION" == "delete" ]]; then
-        for ((i = 2; i <= COUNT; i++)); do
+        for ((i = 1; i <= COUNT; i++)); do
             delete $i
         done
     fi
