@@ -21,14 +21,15 @@ step_cdn_lambda=6
 START_STEP=1
 
 # Parse command-line arguments; removed region parameter
-while getopts ":n:e:a:c:" opt; do
+while getopts ":n:e:a:c:i:" opt; do
     case ${opt} in
     n) NAME=$OPTARG ;;
     e) EMAIL=$OPTARG ;;
     a) ACTION=$OPTARG ;;
     c) COUNT=$OPTARG ;;
+    i) INDEX=$OPTARG ;;
     \?)
-        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count]"
+        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count] [-i index]"
         exit 1
         ;;
     esac
@@ -56,6 +57,11 @@ fi
 
 if [[ ! "$COUNT" =~ ^[0-9]+$ || "$COUNT" -lt 1 ]]; then
     echo "Invalid value for COUNT. It must be an integer greater than 1." >&2
+    exit 1
+fi
+
+if [[ ! "$INDEX" =~ ^[0-9]+$ || "$INDEX" -lt 1 ]]; then
+    echo "Invalid value for INDEX. It must be an integer greater than 1." >&2
     exit 1
 fi
 
@@ -348,14 +354,28 @@ delete() {
 
 main() {
     if [[ "$ACTION" == "create" ]]; then
-        for ((i = 1; i <= COUNT; i++)); do
-            create $i
+        for ((i = $INDEX; i <= $COUNT; i += $INDEX)); do
+            TmpIndex="$i"
+
+            # concurrent create | delete depending on the $INDEX variable
+            while [ $TmpIndex -ne $((i - INDEX)) ]; do
+                create $TmpIndex >/dev/null 2>&1 &
+                TmpIndex=$((TmpIndex - 1))
+            done
+
         done
     fi
 
     if [[ "$ACTION" == "delete" ]]; then
-        for ((i = 1; i <= COUNT; i++)); do
-            delete $i
+        for ((i = $INDEX; i <= $COUNT; i += $INDEX)); do
+            TmpIndex="$i"
+
+            # concurrent create | delete depending on the $INDEX variable
+            while [ $TmpIndex -ne $((i - INDEX)) ]; do
+                delete $TmpIndex >/dev/null 2>&1 &
+                TmpIndex=$((TmpIndex - 1))
+            done
+
         done
     fi
 }
