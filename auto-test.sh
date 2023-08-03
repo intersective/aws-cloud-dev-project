@@ -21,15 +21,14 @@ step_cdn_lambda=6
 START_STEP=1
 
 # Parse command-line arguments; removed region parameter
-while getopts ":n:e:a:c:i:" opt; do
+while getopts ":n:e:a:c:" opt; do
     case ${opt} in
     n) NAME=$OPTARG ;;
     e) EMAIL=$OPTARG ;;
     a) ACTION=$OPTARG ;;
     c) COUNT=$OPTARG ;;
-    i) INDEX=$OPTARG ;;
     \?)
-        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count] [-i index]"
+        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count]"
         exit 1
         ;;
     esac
@@ -57,16 +56,6 @@ fi
 
 if [[ ! "$COUNT" =~ ^[0-9]+$ || "$COUNT" -lt 1 ]]; then
     echo "Invalid value for COUNT. It must be an integer greater than 1." >&2
-    exit 1
-fi
-
-if [[ ! "$INDEX" =~ ^[0-9]+$ || "$INDEX" -lt 1 ]]; then
-    echo "Invalid value for INDEX. It must be an integer greater than 1." >&2
-    exit 1
-fi
-
-if (($COUNT % $INDEX != 0)); then
-    echo "Count should be divisible by the index." >&2
     exit 1
 fi
 
@@ -359,33 +348,14 @@ delete() {
 
 main() {
     if [[ "$ACTION" == "create" ]]; then
-        for ((i = $INDEX; i <= $COUNT; i += $INDEX)); do
-            TmpIndex="$i"
-
-            # concurrent create | delete depending on the $INDEX variable
-            while [ $TmpIndex -ne $((i - INDEX)) ]; do
-                # background
-                create $TmpIndex >/dev/null 2>&1 &
-
-                if [ "$TmpIndex" -eq "$((i - INDEX + 1))" ]; then
-                    create $TmpIndex # wait this to avoid storage issue
-                fi
-                TmpIndex=$((TmpIndex - 1))
-            done
-
+        for ((i = 1; i <= COUNT; i++)); do
+            create $i
         done
     fi
 
     if [[ "$ACTION" == "delete" ]]; then
-        for ((i = $INDEX; i <= $COUNT; i += $INDEX)); do
-            TmpIndex="$i"
-
-            # concurrent create | delete depending on the $INDEX variable
-            while [ $TmpIndex -ne $((i - INDEX)) ]; do
-                delete $TmpIndex >/dev/null 2>&1 &
-                TmpIndex=$((TmpIndex - 1))
-            done
-
+        for ((i = 1; i <= COUNT; i++)); do
+            delete $i
         done
     fi
 }
