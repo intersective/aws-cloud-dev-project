@@ -74,6 +74,8 @@ create() {
 
     RESOURCE_NAME="$NAME""-""$1"
 
+    echo "Creating "$RESOURCE_NAME" .."
+
     if [[ $START_STEP -le $step_start_repo ]]; then
         # clone github repo into codecommit
         cd $HOME
@@ -196,6 +198,8 @@ delete() {
     fi
 
     RESOURCE_NAME="$NAME""-""$1"
+
+    echo "Deleting "$RESOURCE_NAME" .."
 
     if [[ $START_STEP -le $step_start_repo ]]; then
         aws codecommit delete-repository --repository-name $RESOURCE_NAME-repository
