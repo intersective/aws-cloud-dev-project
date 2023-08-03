@@ -21,14 +21,15 @@ step_cdn_lambda=6
 START_STEP=1
 
 # Parse command-line arguments; removed region parameter
-while getopts ":n:e:a:c:" opt; do
+while getopts ":n:e:a:c:s:" opt; do
     case ${opt} in
     n) NAME=$OPTARG ;;
     e) EMAIL=$OPTARG ;;
     a) ACTION=$OPTARG ;;
     c) COUNT=$OPTARG ;;
+    s) START=$OPTARG ;;
     \?)
-        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count]"
+        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count] [-s start index (integer)]"
         exit 1
         ;;
     esac
@@ -37,6 +38,7 @@ done
 # Default values for name and region
 : ${NAME:=$(uuidgen)}
 : ${REGION:=us-east-1}
+: ${START:=1}
 
 # Verify that email is set
 if [[ -z "${EMAIL}" ]]; then
@@ -348,13 +350,13 @@ delete() {
 
 main() {
     if [[ "$ACTION" == "create" ]]; then
-        for ((i = 1; i <= COUNT; i++)); do
+        for ((i = $START; i <= COUNT; i++)); do
             create $i
         done
     fi
 
     if [[ "$ACTION" == "delete" ]]; then
-        for ((i = 1; i <= COUNT; i++)); do
+        for ((i = $START; i <= COUNT; i++)); do
             delete $i
         done
     fi
