@@ -364,7 +364,12 @@ main() {
 
             # concurrent create | delete depending on the $INDEX variable
             while [ $TmpIndex -ne $((i - INDEX)) ]; do
+                # background
                 create $TmpIndex >/dev/null 2>&1 &
+
+                if [ "$TmpIndex" -eq "$((i - INDEX + 1))" ]; then
+                    create $TmpIndex # wait this to avoid storage issue
+                fi
                 TmpIndex=$((TmpIndex - 1))
             done
 
