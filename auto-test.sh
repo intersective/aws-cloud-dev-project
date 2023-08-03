@@ -65,6 +65,11 @@ if [[ ! "$INDEX" =~ ^[0-9]+$ || "$INDEX" -lt 1 ]]; then
     exit 1
 fi
 
+if (($COUNT % $INDEX != 0)); then
+    echo "Count should be divisible by the index." >&2
+    exit 1
+fi
+
 if [[ "$ACTION" != "create" && "$ACTION" != "delete" ]]; then
     echo "Invalid action: $ACTION. Only 'create' or 'delete' are allowed."
     exit 1
