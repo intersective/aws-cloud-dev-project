@@ -73,10 +73,15 @@ create() {
     fi
 
     RESOURCE_NAME="$NAME""-""$1"
+    WORKDIR="$HOME/$RESOURCE_NAME"
 
     echo "Creating "$RESOURCE_NAME" .."
 
     if [[ $STEP -le $step_start_repo ]]; then
+        if [ "$(pwd)" != "$WORKDIR" ]; then
+            cd "$WORKDIR"
+        fi
+
         # clone github repo into codecommit
         cd $HOME
         git clone https://github.com/intersective/aws-cloud-dev-project.git $RESOURCE_NAME
@@ -102,6 +107,9 @@ create() {
     fi
 
     if [[ $STEP -le $step_create_bucket ]]; then
+        if [ "$(pwd)" != "$WORKDIR" ]; then
+            cd "$WORKDIR"
+        fi
         # build api
         rm -rf node_modules
         sudo npm install -g typescript
@@ -128,6 +136,9 @@ create() {
     fi
 
     if [[ $STEP -le $step_lambda_dynamo_api ]]; then
+        if [ "$(pwd)" != "$WORKDIR" ]; then
+            cd "$WORKDIR"
+        fi
         cp -r node_modules dist/
         aws cloudformation package --template-file devops/basic-api-cfn.yml --output-template-file tmp/api-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -144,6 +155,9 @@ create() {
     fi
 
     if [[ $STEP -le $step_docusaurus ]]; then
+        if [ "$(pwd)" != "$WORKDIR" ]; then
+            cd "$WORKDIR"
+        fi
         # package
         aws cloudformation package --template-file devops/basic-docs-cfn.yml --output-template-file tmp/docs-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -161,6 +175,10 @@ create() {
     fi
 
     if [[ $STEP -le $step_cognito_auth ]]; then
+        if [ "$(pwd)" != "$WORKDIR" ]; then
+            cd "$WORKDIR"
+        fi
+
         # package
         aws cloudformation package --template-file devops/prod-auth-cfn.yml --output-template-file tmp/auth-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -175,6 +193,10 @@ create() {
     fi
 
     if [[ $STEP -le $step_cdn_lambda ]]; then
+        if [ "$(pwd)" != "$WORKDIR" ]; then
+            cd "$WORKDIR"
+        fi
+
         # package
         aws cloudformation package --template-file devops/prod-docs-cfn.yml --output-template-file tmp/docs-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -184,6 +206,11 @@ create() {
         # copy files
         aws s3 cp docs/build s3://$RESOURCE_NAME-docs-cdn-lambdaedge-stack-app/ --recursive
 
+    fi
+
+    if [[ $STEP != 1 ]]; then
+        STEP=1
+        echo "Return step to: $STEP"
     fi
 
     # delete previous repo;
@@ -355,6 +382,7 @@ delete() {
 main() {
     if [[ "$ACTION" == "create" ]]; then
         for ((i = $INDEX; i <= COUNT; i++)); do
+            echo "$i"
             create $i
         done
     fi
