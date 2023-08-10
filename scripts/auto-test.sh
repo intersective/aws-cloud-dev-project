@@ -78,9 +78,6 @@ create() {
     echo "Creating "$RESOURCE_NAME" .."
 
     if [[ $STEP -le $step_start_repo ]]; then
-        if [ "$(pwd)" != "$WORKDIR" ]; then
-            cd "$WORKDIR"
-        fi
 
         # clone github repo into codecommit
         cd $HOME
