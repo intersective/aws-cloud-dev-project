@@ -60,7 +60,8 @@ Resources:
         Comment: !Sub '${StackName}-oai'
 
   DocsCloudFrontDistribution:
-    DependsOn: [DocsCloudFrontOriginAccessIdentity, DocsCloudFrontSecurityHeaderResponse]
+    # DependsOn: [DocsCloudFrontOriginAccessIdentity, DocsCloudFrontSecurityHeaderResponse]
+    DependsOn: [DocsCloudFrontOriginAccessIdentity]
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -94,7 +95,7 @@ Resources:
           MinTTL: 60
           TargetOriginId: !Sub '${StackName}-docs'
           ViewerProtocolPolicy: 'redirect-to-https'
-          ResponseHeadersPolicyId: !Ref DocsCloudFrontSecurityHeaderResponse
+          # ResponseHeadersPolicyId: !Ref DocsCloudFrontSecurityHeaderResponse
         DefaultRootObject: index.html
         Enabled: true
         HttpVersion: http2
@@ -104,17 +105,17 @@ Resources:
           CloudFrontDefaultCertificate: true
 
   # Specifying the CloudFront Distribution Security Response Header
-  DocsCloudFrontSecurityHeaderResponse:
-    Type: AWS::CloudFront::ResponseHeadersPolicy
-    Properties: 
-      ResponseHeadersPolicyConfig: 
-        Comment: !Sub '${StackName}-docs'
-        Name: !Sub '${StackName}-docs'
-        SecurityHeadersConfig: 
-          StrictTransportSecurity: 
-            AccessControlMaxAgeSec: 31536000
-            IncludeSubdomains: true
-            Override: true
-            Preload: true
+  # DocsCloudFrontSecurityHeaderResponse:
+  #   Type: AWS::CloudFront::ResponseHeadersPolicy
+  #   Properties: 
+  #     ResponseHeadersPolicyConfig: 
+  #       Comment: !Sub '${StackName}-docs'
+  #       Name: !Sub '${StackName}-docs'
+  #       SecurityHeadersConfig: 
+  #         StrictTransportSecurity: 
+  #           AccessControlMaxAgeSec: 31536000
+  #           IncludeSubdomains: true
+  #           Override: true
+  #           Preload: true
 
 

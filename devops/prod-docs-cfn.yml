@@ -143,7 +143,7 @@ Resources:
 
   ## Specifying the CloudFront Distribution to server your Web Application
   DocusaurusCloudFrontDistribution:
-    DependsOn: [DocusaurusCloudFrontSecurityHeaderResponse]
+    # DependsOn: [DocusaurusCloudFrontSecurityHeaderResponse]
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -189,7 +189,7 @@ Resources:
               LambdaFunctionARN: !GetAtt LambdaEdgeProtection.Outputs.HttpHeadersHandler
           TargetOriginId: !Sub '${StackName}-${AppStackPostfix}'
           ViewerProtocolPolicy: 'redirect-to-https'
-          ResponseHeadersPolicyId: !Ref DocusaurusCloudFrontSecurityHeaderResponse
+          # ResponseHeadersPolicyId: !Ref DocusaurusCloudFrontSecurityHeaderResponse
         DefaultRootObject: index.html
         CustomErrorResponses:
           - ErrorCode: 404
@@ -218,18 +218,18 @@ Resources:
           SslSupportMethod: 'sni-only'
 
   # Specifying the CloudFront Distribution Security Response Header
-  DocusaurusCloudFrontSecurityHeaderResponse:
-    Type: AWS::CloudFront::ResponseHeadersPolicy
-    Properties: 
-      ResponseHeadersPolicyConfig: 
-        Comment: "practera-security-headers-for-DocusaurusS3BUCKET"
-        Name: !Sub '${StackName}-security-headers-${Env}'
-        SecurityHeadersConfig: 
-          StrictTransportSecurity: 
-            AccessControlMaxAgeSec: 31536000
-            IncludeSubdomains: true
-            Override: true
-            Preload: true
+  # DocusaurusCloudFrontSecurityHeaderResponse:
+  #   Type: AWS::CloudFront::ResponseHeadersPolicy
+  #   Properties: 
+  #     ResponseHeadersPolicyConfig: 
+  #       Comment: "practera-security-headers-for-DocusaurusS3BUCKET"
+  #       Name: !Sub '${StackName}-security-headers-${Env}'
+  #       SecurityHeadersConfig: 
+  #         StrictTransportSecurity: 
+  #           AccessControlMaxAgeSec: 31536000
+  #           IncludeSubdomains: true
+  #           Override: true
+  #           Preload: true
 
   LambdaEdgeProtection:
     Type: AWS::Serverless::Application
