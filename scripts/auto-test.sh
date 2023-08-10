@@ -18,18 +18,17 @@ step_docusaurus=4
 step_cognito_auth=5
 step_cdn_lambda=6
 
-START_STEP=1
-
 # Parse command-line arguments; removed region parameter
-while getopts ":n:e:a:c:s:" opt; do
+while getopts ":n:e:a:c:i:s:" opt; do
     case ${opt} in
     n) NAME=$OPTARG ;;
     e) EMAIL=$OPTARG ;;
     a) ACTION=$OPTARG ;;
     c) COUNT=$OPTARG ;;
-    s) START=$OPTARG ;;
+    i) INDEX=$OPTARG ;;
+    s) STEP=$OPTARG ;;
     \?)
-        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count] [-s start index (integer)]"
+        echo "Usage: cmd [-n name] [-e email] [-a action [create | delete]] [-c count] [-i index (integer)]"
         exit 1
         ;;
     esac
@@ -38,7 +37,8 @@ done
 # Default values for name and region
 : ${NAME:=$(uuidgen)}
 : ${REGION:=us-east-1}
-: ${START:=1}
+: ${INDEX:=1}
+: ${STEP:=1}
 
 # Verify that email is set
 if [[ -z "${EMAIL}" ]]; then
@@ -76,7 +76,7 @@ create() {
 
     echo "Creating "$RESOURCE_NAME" .."
 
-    if [[ $START_STEP -le $step_start_repo ]]; then
+    if [[ $STEP -le $step_start_repo ]]; then
         # clone github repo into codecommit
         cd $HOME
         git clone https://github.com/intersective/aws-cloud-dev-project.git $RESOURCE_NAME
@@ -101,7 +101,7 @@ create() {
         fi
     fi
 
-    if [[ $START_STEP -le $step_create_bucket ]]; then
+    if [[ $STEP -le $step_create_bucket ]]; then
         # build api
         rm -rf node_modules
         sudo npm install -g typescript
@@ -127,7 +127,7 @@ create() {
 
     fi
 
-    if [[ $START_STEP -le $step_lambda_dynamo_api ]]; then
+    if [[ $STEP -le $step_lambda_dynamo_api ]]; then
         cp -r node_modules dist/
         aws cloudformation package --template-file devops/basic-api-cfn.yml --output-template-file tmp/api-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -143,7 +143,7 @@ create() {
 
     fi
 
-    if [[ $START_STEP -le $step_docusaurus ]]; then
+    if [[ $STEP -le $step_docusaurus ]]; then
         # package
         aws cloudformation package --template-file devops/basic-docs-cfn.yml --output-template-file tmp/docs-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -160,7 +160,7 @@ create() {
 
     fi
 
-    if [[ $START_STEP -le $step_cognito_auth ]]; then
+    if [[ $STEP -le $step_cognito_auth ]]; then
         # package
         aws cloudformation package --template-file devops/prod-auth-cfn.yml --output-template-file tmp/auth-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -174,7 +174,7 @@ create() {
 
     fi
 
-    if [[ $START_STEP -le $step_cdn_lambda ]]; then
+    if [[ $STEP -le $step_cdn_lambda ]]; then
         # package
         aws cloudformation package --template-file devops/prod-docs-cfn.yml --output-template-file tmp/docs-pkg.yml --s3-bucket $RESOURCE_NAME-s3-bucket --s3-prefix deployment-packages
 
@@ -201,7 +201,7 @@ delete() {
 
     echo "Deleting "$RESOURCE_NAME" .."
 
-    if [[ $START_STEP -le $step_start_repo ]]; then
+    if [[ $STEP -le $step_start_repo ]]; then
         aws codecommit delete-repository --repository-name $RESOURCE_NAME-repository
         if [[ $? -ne 0 ]]; then
             echo "Error in delete $step_start_repo"
@@ -209,7 +209,7 @@ delete() {
         fi
     fi
 
-    if [[ $START_STEP -le $step_create_bucket ]]; then
+    if [[ $STEP -le $step_create_bucket ]]; then
         # empty bucket
         aws s3 rm s3://$RESOURCE_NAME-s3-bucket --recursive
 
@@ -223,7 +223,7 @@ delete() {
 
     fi
 
-    if [[ $START_STEP -le $step_lambda_dynamo_api ]]; then
+    if [[ $STEP -le $step_lambda_dynamo_api ]]; then
         aws cloudformation delete-stack --stack-name $RESOURCE_NAME-lambda-stack
         echo "Waiting for $RESOURCE_NAME-lambda-stack to be deleted . . ."
         aws cloudformation wait stack-delete-complete --stack-name $RESOURCE_NAME-lambda-stack
@@ -234,7 +234,7 @@ delete() {
         fi
     fi
 
-    if [[ $START_STEP -le $step_docusaurus ]]; then
+    if [[ $STEP -le $step_docusaurus ]]; then
 
         # list all versions
         object_versions=$(aws s3api list-object-versions --bucket $RESOURCE_NAME-docs-stack-docs --output json)
@@ -274,7 +274,7 @@ delete() {
         fi
     fi
 
-    if [[ $START_STEP -le $step_cdn_lambda ]]; then
+    if [[ $STEP -le $step_cdn_lambda ]]; then
         # list all versions
         object_versions=$(aws s3api list-object-versions --bucket $RESOURCE_NAME-docs-cdn-lambdaedge-stack-app --output json)
         object_versions_base64=$(echo "$object_versions" | jq -r '.Versions[] | @base64')
@@ -344,7 +344,7 @@ delete() {
         fi
     fi
 
-    if [[ $START_STEP -le $step_cognito_auth ]]; then
+    if [[ $STEP -le $step_cognito_auth ]]; then
         aws cloudformation delete-stack --stack-name $RESOURCE_NAME-auth-stack
         echo "Waiting for $RESOURCE_NAME-auth-stack to be deleted . . ."
         aws cloudformation wait stack-delete-complete --stack-name $RESOURCE_NAME-auth-stack
@@ -354,13 +354,13 @@ delete() {
 
 main() {
     if [[ "$ACTION" == "create" ]]; then
-        for ((i = $START; i <= COUNT; i++)); do
+        for ((i = $INDEX; i <= COUNT; i++)); do
             create $i
         done
     fi
 
     if [[ "$ACTION" == "delete" ]]; then
-        for ((i = $START; i <= COUNT; i++)); do
+        for ((i = $INDEX; i <= COUNT; i++)); do
             delete $i
         done
     fi
