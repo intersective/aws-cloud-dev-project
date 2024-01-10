@@ -27,5 +27,5 @@ jobs:
           COUNT: 5 # should be github workflow input here
           SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
-      # - run: cat .accounts-$GITHUB_SHA-$GITHUB_RUN_ID-
+      - run: cat .accounts-$GITHUB_SHA-$GITHUB_RUN_ID-
       
