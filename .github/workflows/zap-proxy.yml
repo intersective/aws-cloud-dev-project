@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ env.BRANCH_TAG_NAME }}
       - name: Generate htpasswd file
-        working-directory: nginx/
+        working-directory: zap-proxy/nginx/
         run: |
           echo "y" | bash genpwd.sh $COUNT
         env:
