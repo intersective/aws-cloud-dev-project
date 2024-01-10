@@ -10,7 +10,7 @@ Resources:
   S3Bucket:
     Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: dont-delete-vpc-export-bucket
+      BucketName: htpasswd-files
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
