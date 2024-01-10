@@ -13,11 +13,8 @@ jobs:
     permissions: write-all
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: zap-proxy/
     env:
-      BRANCH_TAG_NAME: feat/automation
+      BRANCH_TAG_NAME: feat/automation # to change
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,20 +22,10 @@ jobs:
           ref: ${{ env.BRANCH_TAG_NAME }}
       - name: Generate htpasswd file
         run: |
-          rm $HTPASSWD_PATH
-          ls -la
-          ls -la nginx/
-          echo "y" | bash nginx/genpwd.sh $COUNT
-
-          ls -la
-          ls -la nginx/
-          echo `pwd`
-          
-          cat $HTPASSWD_PATH
+          echo "y" | bash zap-proxy/nginx/genpwd.sh $COUNT
         env:
           COUNT: 5 # should be github workflow input here
           SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
-          HTPASSWD_PATH: nginx/.htpasswd
       # - run: cat .accounts-$GITHUB_SHA-$GITHUB_RUN_ID-
       
