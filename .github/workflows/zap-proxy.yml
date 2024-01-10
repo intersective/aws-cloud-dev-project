@@ -1,0 +1,29 @@
+---
+name: "Deploy to zap-proxy cyber project"
+
+on:
+  push:
+    branches:
+      - feat/automation
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    environment: p2-stage
+    permissions: write-all
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zap-proxy/
+    env:
+      BRANCH_TAG_NAME: trunk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.BRANCH_TAG_NAME }}
+      - name: Show files
+        run: |
+          echo `pwd`
+          ls -la
