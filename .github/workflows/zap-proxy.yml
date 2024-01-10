@@ -32,6 +32,6 @@ jobs:
           COUNT: 5 # should be github workflow input here
           SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
-          PATH: nginx/.htpasswd
+          HTPASSWD_PATH: nginx/.htpasswd
       # - run: cat .accounts-$GITHUB_SHA-$GITHUB_RUN_ID-
       
