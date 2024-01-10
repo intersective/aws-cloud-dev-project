@@ -25,9 +25,10 @@ jobs:
           ref: ${{ env.BRANCH_TAG_NAME }}
       - name: Generate htpasswd file
         run: |
-          ls -la
-          ls -la nginx/
+          rm $HTPASSWD_PATH
           echo "y" | bash nginx/genpwd.sh $COUNT
+
+          cat $HTPASSWD_PATH
         env:
           COUNT: 5 # should be github workflow input here
           SHA: ${{ github.sha }}
