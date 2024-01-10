@@ -26,8 +26,14 @@ jobs:
       - name: Generate htpasswd file
         run: |
           rm $HTPASSWD_PATH
+          ls -la
+          ls -la nginx/
           echo "y" | bash nginx/genpwd.sh $COUNT
 
+          ls -la
+          ls -la nginx/
+          echo `pwd`
+          
           cat $HTPASSWD_PATH
         env:
           COUNT: 5 # should be github workflow input here
