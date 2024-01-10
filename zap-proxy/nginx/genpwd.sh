@@ -12,7 +12,7 @@ run=${RUN_ID:-123}
 NUM_ENTRIES=$1
 
 # .htpasswd file path
-HTPASSWD_FILE="zap-proxy/nginx/.htpasswd"
+HTPASSWD_FILE=${PATH:-zap-proxy/nginx/.htpasswd}
 
 # Check if .htpasswd file already exists
 if [ -f "$HTPASSWD_FILE" ]; then
