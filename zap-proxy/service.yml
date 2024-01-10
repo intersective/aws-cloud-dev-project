@@ -8,6 +8,7 @@ Parameters:
     Type: String
     Description: The VPC that the service is running inside of
   PublicSubnetIds:
+    # Type: String
     Type: List<AWS::EC2::Subnet::Id>
     Description: List of public subnet ID's to put the load balancer and tasks in
   ClusterName:
@@ -53,17 +54,21 @@ Parameters:
     Type: String
     Default: zap.cybersec.practeraco.de
     Description: The subdomain name (e.g., app.example.com)
+  SSLCertificate:
+    Type: String
+    Default: arn:aws:acm:us-east-1:510645120987:certificate/9e8615de-927e-427c-8e44-31e980de1de5
+    Description: The root domain name (e.g., example.com)
 
 Resources:
   # SSL Certificate for the subdomain
-  SSLCertificate:
-    Type: AWS::CertificateManager::Certificate
-    Properties:
-      DomainName: !Ref SubDomainName
-      ValidationMethod: DNS
-      # If you want to cover both root and subdomain:
-      SubjectAlternativeNames:
-        - !Ref RootDomainName
+  # SSLCertificate:
+  #   Type: AWS::CertificateManager::Certificate
+  #   Properties:
+  #     DomainName: !Ref SubDomainName
+  #     ValidationMethod: DNS
+  #     # If you want to cover both root and subdomain:
+  #     SubjectAlternativeNames:
+  #       - !Ref RootDomainName
 
   # Route 53 record set to point the subdomain to the ELB
   SubDomainRecordSet:
