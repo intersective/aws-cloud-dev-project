@@ -1,20 +1,16 @@
 #!/bin/bash
 
-set -eo pipefail
-
 # Check if the number of entries is provided
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <number_of_entries>"
     exit 1
 fi
-sha=${SHA:-testsha}
-run=${RUN_ID:-123}
 
 # Number of entries
 NUM_ENTRIES=$1
 
 # .htpasswd file path
-HTPASSWD_FILE=${HTPASSWD_PATH:-zap-proxy/nginx/.htpasswd}
+HTPASSWD_FILE=".htpasswd"
 
 # Check if .htpasswd file already exists
 if [ -f "$HTPASSWD_FILE" ]; then
@@ -40,7 +36,7 @@ do
     htpasswd -bB $HTPASSWD_FILE $USERNAME $PASSWORD
     echo "Added $USERNAME with password $PASSWORD"
 
-    echo ""$USERNAME":"$PASSWORD"" >> .accounts-"$sha"-"$run"-
+    echo ""$USERNAME":"$PASSWORD"" >> .accounts
 done
 
 echo "Generated $NUM_ENTRIES entries in $HTPASSWD_FILE"
