@@ -15,10 +15,12 @@ Resources:
 
   # The networking configuration. This creates an isolated
   # network specific to this particular environment
-  VpcStack:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: vpc.yml
+
+  ## Note commented this one out: Reuse existing vpc
+  # VpcStack:
+  #   Type: AWS::Serverless::Application
+  #   Properties:
+  #     Location: vpc.yml
 
   # This stack contains the Amazon ECS cluster itself
   ClusterStack:
@@ -32,8 +34,8 @@ Resources:
     Properties:
       Location: service.yml
       Parameters:
-        VpcId: !GetAtt VpcStack.Outputs.VpcId
-        PublicSubnetIds: !GetAtt VpcStack.Outputs.PublicSubnetIds
+        VpcId: !ImportValue CYBERSECURITY-VPC-ID
+        PublicSubnetIds: !ImportValue CYBERSECURITY-VPC-PUBLICSUBNETS
         ClusterName: !GetAtt ClusterStack.Outputs.ClusterName
         ECSTaskExecutionRole: !GetAtt ClusterStack.Outputs.ECSTaskExecutionRole
         AppImageUrl: !Ref AppImageUrl

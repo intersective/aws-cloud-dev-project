@@ -23,7 +23,4 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ env.BRANCH_TAG_NAME }}
-      - name: Show files
-        run: |
-          echo `pwd`
-          ls -la
+      

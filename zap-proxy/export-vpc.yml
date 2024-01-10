@@ -1,0 +1,28 @@
+Parameters:
+  PublicSubnetIds:
+    Description: VPC public subnets.
+    Type: String
+  VpcId:
+    Description: VPC id.
+    Type: String
+
+Resources:
+  S3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: dont-delete-vpc-export-bucket
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+Outputs:
+  PUBLICSUBNETS:
+    Description: "VPC Public subnets"
+    Value: !Ref PublicSubnetIds
+    Export:
+      Name: "CYBERSECURITY-VPC-PUBLICSUBNETS"
+  VPCID:
+    Description: "VPC ID"
+    Value: !Ref VpcId
+    Export:
+      Name: "CYBERSECURITY-VPC-ID"

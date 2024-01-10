@@ -88,6 +88,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskExecutionRole
       ContainerDefinitions:
         # NGINX sidecar for the task
         - Name: nginx
@@ -144,6 +145,7 @@ Resources:
         MinimumHealthyPercent: 75
       DesiredCount: !Ref DesiredCount
       TaskDefinition: !Ref TaskDefinition
+      EnableExecuteCommand: true
       LoadBalancers:
         - ContainerName: nginx
           ContainerPort: !Ref ContainerPort

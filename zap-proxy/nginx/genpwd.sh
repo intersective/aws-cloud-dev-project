@@ -35,6 +35,8 @@ do
     PASSWORD=$(generate_password)
     htpasswd -bB $HTPASSWD_FILE $USERNAME $PASSWORD
     echo "Added $USERNAME with password $PASSWORD"
+
+    echo ""$USERNAME":"$PASSWORD"" >> .accounts
 done
 
 echo "Generated $NUM_ENTRIES entries in $HTPASSWD_FILE"

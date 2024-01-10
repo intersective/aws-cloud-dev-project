@@ -35,6 +35,24 @@ Resources:
               StringEquals:
                 aws:SourceAccount: !Ref AWS::AccountId
       Path: /
+      Policies:
+        - PolicyName: ssm-ssh-access
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'ssmmessages:CreateControlChannel'
+              - 'ssmmessages:CreateDataChannel'
+              - 'ssmmessages:OpenControlChannel'
+              - 'ssmmessages:OpenDataChannel'
+              Resource: '*' 
+        - PolicyName: ecs-execute-command
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'ecs:ExecuteCommand'
+              Resource: '*'  
 
       # This role enables basic features of ECS. See reference:
       # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/security-iam-awsmanpol.html#security-iam-awsmanpol-AmazonECSTaskExecutionRolePolicy
