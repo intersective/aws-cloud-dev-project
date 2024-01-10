@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eo pipefail
+set -o pipefail
 
 # Check if the number of entries is provided
 if [ "$#" -ne 1 ]; then
@@ -27,7 +27,7 @@ fi
 
 # Function to generate a random password
 generate_password() {
-    LC_ALL=C < /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()-_=+[]{}|;:,.<>/?' | head -c10
+    LC_ALL=C < /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()-_=+[]{}|;:,.<>/?' | head -c10 
 }
 
 # Generate entries
