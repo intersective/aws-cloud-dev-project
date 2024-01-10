@@ -26,7 +26,9 @@ jobs:
       - name: Generate htpasswd file
         working-directory: zap-proxy/nginx/
         run: |
+          cat .htpasswd
           echo "y" | bash genpwd.sh $COUNT
+          cat .htpasswd
         env:
           COUNT: 5 # should be github workflow input here
           SHA: ${{ github.sha }}
