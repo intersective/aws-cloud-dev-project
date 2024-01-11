@@ -1,62 +1,50 @@
 #!/bin/bash
 
-# first you need to get access credentials
-# aws configure
+# Function to deploy a stack
+deploy_stack() {
+    TeamName=$1
+    Client=$2
+    SubDomainName=$3
+    StackName=$4
+    RootDomainName=$5
 
-# our app is already built - we're using a prebuilt zap image
+    sam deploy \
+        --template-file stack.yml \
+        --stack-name $StackName \
+        --s3-bucket cybersec-deployment-files \
+        --debug \
+        --capabilities CAPABILITY_NAMED_IAM \
+        --profile cyber-sandbox \
+        --region us-east-1 \
+        --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
+}
 
-
-# but we need to build our NGNIX proxy which will be used to route traffic to our app
-# we will also use it to provide some basic authentication
-
-
-## NGINIX IMAGE AND PUSH TO ECR:
-# NGNIX_URI=$(aws ecr create-repository --repository-name myapp --query 'repository.repositoryUri' --output text --region us-east-1)
-# docker build -t $NGNIX_URI .
-# docker push $NGNIX_URI
-
-
-#########################PCLOUD-SANDBOX##############################################
-# This is for Pcloud - Sandbox used.
-# export CERTIFICATE_ARN=arn:aws:acm:us-east-1:320980967765:certificate/380362bf-8908-4f05-90b5-9049f3cbca97
-# export NGNIX_URI=320980967765.dkr.ecr.us-east-1.amazonaws.com/app:latest
-# export APP_URI=ghcr.io/zaproxy/zaproxy:stable
-
-# TeamName=team-1
-# Client=wbla
-# SubDomainName=$TeamName-$Client.pcloud.practeraco.de
-# StackName=$TeamName-$Client
-# RootDomainName=pcloud.practeraco.de
-# sam deploy \
-#   --template-file stack.yml \
-#   --stack-name $StackName \
-#   --s3-bucket  sam-s3-bucket-pcloud \
-#   --debug \
-#   --capabilities CAPABILITY_NAMED_IAM \
-#   --profile pcloud-sandbox \
-#   --region us-east-1 \
-#   --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
-
-
-#########################CYBER-SANDBOX##############################################
-# This is for Cyber - Sandbox used.
+# Set NGINX_IMAGE_URI and other variables here
 export NGNIX_URI=510645120987.dkr.ecr.us-east-1.amazonaws.com/nginx
 export CERTIFICATE_ARN=arn:aws:acm:us-east-1:510645120987:certificate/9e8615de-927e-427c-8e44-31e980de1de5
 export APP_URI=ghcr.io/zaproxy/zaproxy:stable
 
-TeamName=team-1
-Client=wbla
-SubDomainName=$TeamName-$Client.cybersec.practeraco.de
-StackName=$TeamName-$Client
-RootDomainName=cybersec.practeraco.de
-sam deploy \
-  --template-file stack.yml \
-  --stack-name $StackName \
-  --s3-bucket  cybersec-deployment-files \
-  --debug \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --profile cyber-sandbox \
-  --region us-east-1 \
-  --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
+# Teams for WBLA
+for ((i=1; i<=10; i++)); do
+    TeamName="team-$i"
+    Client="wbla"
+    SubDomainName="$TeamName-$Client.cybersec.practeraco.de"
+    StackName="$TeamName-$Client"
+    RootDomainName="cybersec.practeraco.de"
+    
+    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName" &
+done
 
-  
+# Teams for IBM
+for ((i=1; i<=10; i++)); do
+    TeamName="team-$i"
+    Client="ibm"
+    SubDomainName="$TeamName-$Client.cybersec.practeraco.de"
+    StackName="$TeamName-$Client"
+    RootDomainName="cybersec.practeraco.de"
+
+    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName" &
+done
+
+# Wait for all background jobs to finish
+wait
