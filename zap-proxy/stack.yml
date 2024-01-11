@@ -19,7 +19,7 @@ Parameters:
     Description: ARN of the existing certificate.
   SubDomainName:
     Type: String
-    Default: zap.cybersec.practeraco.de
+    Default: zap.pcloud.practeraco.de
     Description: The subdomain name (e.g., app.example.com)
   Client:
     Type: String
@@ -33,10 +33,10 @@ Resources:
   # The networking configuration. This creates an isolated
   # network specific to this particular environment
   ## Note commented this one out: Reuse existing vpc
-  # VpcStack:
-  #   Type: AWS::Serverless::Application
-  #   Properties:
-  #     Location: vpc.yml
+  VpcStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: vpc.yml
 
   # This stack contains the Amazon ECS cluster itself
   ClusterStack:
@@ -52,8 +52,8 @@ Resources:
     Properties:
       Location: service.yml
       Parameters:
-        VpcId: !ImportValue CYBERSECURITY-VPC-ID
-        PublicSubnetIds: !ImportValue CYBERSECURITY-VPC-PUBLICSUBNETS
+        VpcId: vpc-035c63bb8c483a219
+        PublicSubnetIds: subnet-0371146de19b72726,subnet-05708a77ebaef3251
         ClusterName: !GetAtt ClusterStack.Outputs.ClusterName
         ECSTaskExecutionRole: !GetAtt ClusterStack.Outputs.ECSTaskExecutionRole
         AppImageUrl: !Ref AppImageUrl

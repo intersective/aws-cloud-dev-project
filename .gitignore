@@ -141,3 +141,5 @@ dist
 .svelte-kit
 
 .accounts
+
+.zap-proxy/new-nginix
