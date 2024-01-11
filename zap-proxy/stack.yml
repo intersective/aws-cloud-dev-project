@@ -10,12 +10,28 @@ Parameters:
   NginxImageUrl:
     Type: String
     Description: The url of a docker image that provides the NGINX reverse proxy
-
+  TeamName:
+    Type: String
+    Default: "team-1"
+    Description: Team name
+  SSLCertificateArn:
+    Type: String
+    Description: ARN of the existing certificate.
+  SubDomainName:
+    Type: String
+    Default: zap.cybersec.practeraco.de
+    Description: The subdomain name (e.g., app.example.com)
+  Client:
+    Type: String
+    Default: "skillsbuild"
+    Description: WBLA or IBM
 Resources:
-
+  # CertificateStack:
+  #   Type: AWS::Serverless::Application
+  #   Properties:
+  #     Location: acm-zone.yml
   # The networking configuration. This creates an isolated
   # network specific to this particular environment
-
   ## Note commented this one out: Reuse existing vpc
   # VpcStack:
   #   Type: AWS::Serverless::Application
@@ -27,8 +43,10 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location: cluster.yml
-
-  # This stack contains the container deployment
+      Parameters:
+        TeamName: !Ref TeamName
+        Client: !Ref Client
+  # # This stack contains the container deployment
   ServiceStack:
     Type: AWS::Serverless::Application
     Properties:
@@ -40,3 +58,7 @@ Resources:
         ECSTaskExecutionRole: !GetAtt ClusterStack.Outputs.ECSTaskExecutionRole
         AppImageUrl: !Ref AppImageUrl
         NginxImageUrl: !Ref NginxImageUrl
+        SSLCertificateArn: !Ref SSLCertificateArn
+        TeamName: !Ref TeamName
+        SubDomainName: !Ref SubDomainName
+        Client: !Ref Client

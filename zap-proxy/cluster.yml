@@ -1,6 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Empty ECS cluster that has no EC2 instances. It is designed
              to be used with AWS Fargate serverless capacity
+Parameters:
+  TeamName:
+    Type: String
+    Default: "team-1"
+    Description: Team name
+  Client:
+    Type: String
+    Default: "skillsbuild"
+    Description: WBLA or IBM
 
 Resources:
   # This is authorizes ECS to manage resources on your
@@ -14,6 +23,7 @@ Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
+      ClusterName: !Sub ${TeamName}-${Client}-cybersecurity-cluster
       ClusterSettings:
         - Name: containerInsights
           Value: enabled
@@ -23,6 +33,7 @@ Resources:
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ${TeamName}-${Client}-cybersecurity-role
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
