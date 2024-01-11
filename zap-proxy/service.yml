@@ -8,6 +8,7 @@ Parameters:
     Type: String
     Description: The VPC that the service is running inside of
   PublicSubnetIds:
+    # Type: String
     Type: List<AWS::EC2::Subnet::Id>
     Description: List of public subnet ID's to put the load balancer and tasks in
   ClusterName:
