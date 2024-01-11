@@ -25,6 +25,12 @@ Parameters:
     Type: String
     Default: "skillsbuild"
     Description: WBLA or IBM
+  RootDomainName:
+    Type: String
+    Default: pcloud.practeraco.de 
+    Description: The root domain name (e.g., example.com)
+
+
 Resources:
   # CertificateStack:
   #   Type: AWS::Serverless::Application
@@ -33,10 +39,13 @@ Resources:
   # The networking configuration. This creates an isolated
   # network specific to this particular environment
   ## Note commented this one out: Reuse existing vpc
-  VpcStack:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: vpc.yml
+
+
+  #Uncomment if required to crete only once
+  # VpcStack:
+  #   Type: AWS::Serverless::Application
+  #   Properties:
+  #     Location: vpc.yml
 
   # This stack contains the Amazon ECS cluster itself
   ClusterStack:
@@ -48,12 +57,19 @@ Resources:
         Client: !Ref Client
   # # This stack contains the container deployment
   ServiceStack:
+    DependsOn: ClusterStack
     Type: AWS::Serverless::Application
     Properties:
       Location: service.yml
       Parameters:
-        VpcId: vpc-035c63bb8c483a219
-        PublicSubnetIds: subnet-0371146de19b72726,subnet-05708a77ebaef3251
+       # for pcloud-sandbox
+        # VpcId: vpc-035c63bb8c483a219
+         # For cyber-sandbox
+        VpcId: vpc-056af225c9a7b5992
+        # for pcloud-sandbox
+        # PublicSubnetIds: subnet-0371146de19b72726,subnet-05708a77ebaef3251
+        # For cyber-sandbox
+        PublicSubnetIds: subnet-0a7b5dacf14b96cef,subnet-0283a9d16378baeb9
         ClusterName: !GetAtt ClusterStack.Outputs.ClusterName
         ECSTaskExecutionRole: !GetAtt ClusterStack.Outputs.ECSTaskExecutionRole
         AppImageUrl: !Ref AppImageUrl
@@ -62,3 +78,4 @@ Resources:
         TeamName: !Ref TeamName
         SubDomainName: !Ref SubDomainName
         Client: !Ref Client
+        RootDomainName: !Ref RootDomainName

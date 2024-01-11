@@ -24,9 +24,29 @@ Resources:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Sub ${TeamName}-${Client}-cybersecurity-cluster
-      ClusterSettings:
-        - Name: containerInsights
-          Value: enabled
+      Configuration:
+        ExecuteCommandConfiguration:
+          LogConfiguration:
+            CloudWatchLogGroupName: !Ref ECSLogGroup
+          Logging: OVERRIDE
+
+  ClusterCPAssociation:
+    Type: "AWS::ECS::ClusterCapacityProviderAssociations"
+    Properties:
+      Cluster: !Ref ECSCluster
+      CapacityProviders:
+        - "FARGATE_SPOT"
+      DefaultCapacityProviderStrategy:
+        - Base: 1
+          Weight: 1
+          CapacityProvider: "FARGATE_SPOT"
+
+  ECSLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub ${TeamName}-${Client}-cybersecurity-cluster-logs
+      RetentionInDays: 30
+
 
   # This is a role which is used within Fargate to allow the Fargate agent
   # to download images, and upload logs.
