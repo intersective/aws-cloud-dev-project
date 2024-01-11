@@ -150,7 +150,7 @@ Resources:
           CapacityProvider: "FARGATE_SPOT"
       ServiceName: !Ref ServiceName
       Cluster: !Ref ClusterName
-      LaunchType: FARGATE
+      # LaunchType: FARGATE
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED

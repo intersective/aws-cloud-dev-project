@@ -32,7 +32,9 @@
 #   --stack-name $StackName \
 #   --s3-bucket  sam-s3-bucket-pcloud \
 #   --debug \
+#   --capabilities CAPABILITY_NAMED_IAM \
 #   --profile pcloud-sandbox \
+#   --region us-east-1 \
 #   --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
 
 
@@ -52,7 +54,9 @@ sam deploy \
   --stack-name $StackName \
   --s3-bucket  cybersec-deployment-files \
   --debug \
+  --capabilities CAPABILITY_NAMED_IAM \
   --profile cyber-sandbox \
+  --region us-east-1 \
   --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
 
   
