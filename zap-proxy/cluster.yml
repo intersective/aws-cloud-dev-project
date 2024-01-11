@@ -28,7 +28,7 @@ Resources:
       #   ExecuteCommandConfiguration:
       #     LogConfiguration:
       #       CloudWatchLogGroupName: !Ref ECSLogGroup
-          Logging: OVERRIDE
+          # Logging: OVERRIDE
 
   ClusterCPAssociation:
     Type: "AWS::ECS::ClusterCapacityProviderAssociations"
@@ -90,6 +90,8 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
+
+
 Outputs:
   ClusterName:
     Description: The ECS cluster into which to launch resources
@@ -97,3 +99,4 @@ Outputs:
   ECSTaskExecutionRole:
     Description: The role used to start up a task
     Value: !Ref ECSTaskExecutionRole
+    

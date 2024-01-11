@@ -17,6 +17,12 @@ deploy_stack() {
         --profile cyber-sandbox \
         --region us-east-1 \
         --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
+
+    # Check the deployment status
+    if [ $? -ne 0 ]; then
+        echo "Error: Deployment failed for $StackName. Halting execution."
+        exit 1
+    fi
 }
 
 # Set NGINX_IMAGE_URI and other variables here
@@ -32,7 +38,7 @@ for ((i=1; i<=10; i++)); do
     StackName="$TeamName-$Client"
     RootDomainName="cybersec.practeraco.de"
     
-    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName" &
+    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName"
 done
 
 # Teams for IBM
@@ -43,8 +49,5 @@ for ((i=1; i<=10; i++)); do
     StackName="$TeamName-$Client"
     RootDomainName="cybersec.practeraco.de"
 
-    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName" &
+    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName"
 done
-
-# Wait for all background jobs to finish
-wait
