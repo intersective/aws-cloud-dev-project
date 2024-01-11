@@ -16,7 +16,7 @@ deploy_stack() {
         --capabilities CAPABILITY_NAMED_IAM \
         --profile cyber-sandbox \
         --region us-east-1 \
-        --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
+        --parameter-overrides "AppImageUrl=$APP_URI" "Client=$Client" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
 
     # Check the deployment status
     if [ $? -ne 0 ]; then
@@ -32,8 +32,8 @@ export APP_URI=ghcr.io/zaproxy/zaproxy:stable
 
 # Teams for WBLA
 for ((i=1; i<=1; i++)); do
-    TeamName="test-$i"
-    Client="atteempt"
+    TeamName="suniltest-$i"
+    Client="attempt"
     SubDomainName="$TeamName-$Client.cybersec.practeraco.de"
     StackName="$TeamName-$Client"
     RootDomainName="cybersec.practeraco.de"

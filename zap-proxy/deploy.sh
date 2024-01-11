@@ -16,7 +16,7 @@ deploy_stack() {
         --capabilities CAPABILITY_NAMED_IAM \
         --profile cyber-sandbox \
         --region us-east-1 \
-        --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
+        --parameter-overrides "AppImageUrl=$APP_URI" "Client=$Client" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
 
     # Check the deployment status
     if [ $? -ne 0 ]; then
