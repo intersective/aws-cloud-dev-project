@@ -76,7 +76,7 @@ Resources:
   #     ValidationMethod: DNS
   #     # If you want to cover both root and subdomain:
   #     SubjectAlternativeNames:
-  #       - !Ref RootDomainName
+  #       - !Ref 
 
 #  Route 53 record set to point the subdomain to the ELB
   # SubDomainRecordSet:
@@ -144,6 +144,10 @@ Resources:
     # the target group with the LB
     DependsOn: PublicLoadBalancerListener
     Properties:
+      CapacityProviderStrategy: 
+        - Base: 1
+          Weight: 1
+          CapacityProvider: "FARGATE_SPOT"
       ServiceName: !Ref ServiceName
       Cluster: !Ref ClusterName
       LaunchType: FARGATE
