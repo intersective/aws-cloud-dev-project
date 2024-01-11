@@ -1,0 +1,7 @@
+version = 0.1
+[default.deploy]
+[default.deploy.parameters]
+s3_bucket = "cybersec-deployment-files"
+s3_prefix = "team-1"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"

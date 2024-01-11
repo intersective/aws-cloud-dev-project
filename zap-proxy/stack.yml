@@ -10,16 +10,29 @@ Parameters:
   NginxImageUrl:
     Type: String
     Description: The url of a docker image that provides the NGINX reverse proxy
-
+  TeamName:
+    Type: String
+    Default: "team-1"
+    Description: Team name
+  SSLCertificateArn:
+    Type: String
+    Description: ARN of the existing certificate.
   SubDomainName:
     Type: String
     Default: zap.cybersec.practeraco.de
     Description: The subdomain name (e.g., app.example.com)
-
+  Client:
+    Type: String
+    Default: "skillsbuild"
+    Description: WBLA or IBM
 Resources:
-
-  # # The networking configuration. This creates an isolated
-  # # network specific to this particular environment
+  # CertificateStack:
+  #   Type: AWS::Serverless::Application
+  #   Properties:
+  #     Location: acm-zone.yml
+  # The networking configuration. This creates an isolated
+  # network specific to this particular environment
+  ## Note commented this one out: Reuse existing vpc
   # VpcStack:
   #   Type: AWS::Serverless::Application
   #   Properties:
@@ -30,19 +43,22 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location: cluster.yml
-
-  # This stack contains the container deployment
+      Parameters:
+        TeamName: !Ref TeamName
+        Client: !Ref Client
+  # # This stack contains the container deployment
   ServiceStack:
     Type: AWS::Serverless::Application
     Properties:
       Location: service.yml
       Parameters:
-        # VpcId: !GetAtt VpcStack.Outputs.VpcId
-        VpcId: vpc-056af225c9a7b5992
-        PublicSubnetIds: subnet-0a7b5dacf14b96cef,subnet-0283a9d16378baeb9
-        # PublicSubnetIds: !GetAtt VpcStack.Outputs.PublicSubnetIds
+        VpcId: !ImportValue CYBERSECURITY-VPC-ID
+        PublicSubnetIds: !ImportValue CYBERSECURITY-VPC-PUBLICSUBNETS
         ClusterName: !GetAtt ClusterStack.Outputs.ClusterName
         ECSTaskExecutionRole: !GetAtt ClusterStack.Outputs.ECSTaskExecutionRole
         AppImageUrl: !Ref AppImageUrl
         NginxImageUrl: !Ref NginxImageUrl
+        SSLCertificateArn: !Ref SSLCertificateArn
+        TeamName: !Ref TeamName
         SubDomainName: !Ref SubDomainName
+        Client: !Ref Client

@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create Hosted Zone
+Parameters:
+  HostedZoneName:
+    Type: String
+    Default: "practeraco.de"
+    Description: The root domain name (e.g., example.com)
+  RootDomainName:
+    Type: String
+    Default: "*.practeraco.de"
+    Description: The root domain name (e.g., example.com)
+
+Resources:
+  HostedZone:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: !Sub "My hosted zone for ${HostedZoneName}"
+      Name: !Sub ${HostedZoneName}
+      HostedZoneTags:
+        - Key: "DevOps"
+          Value: "true"
+
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub ${RootDomainName}
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Sub ${RootDomainName}
+          HostedZoneId: !Ref HostedZone
+      Tags:
+        - Value: "true"
+          Key: "Devops"
+
+Outputs:
+  HostedZoneId:
+    Description: The Hosted Zone ID
+    Value: !Ref HostedZone
+  CertificateArn:
+    Description: The Certificate ARN
+    Value: !Ref Certificate

@@ -12,15 +12,11 @@ export APP_URI=ghcr.io/zaproxy/zaproxy:stable
 # docker build -t $NGNIX_URI .
 # docker push $NGNIX_URI
 
-
 export NGNIX_URI=510645120987.dkr.ecr.us-east-1.amazonaws.com/nginx
-
+export CERTIFICATE_ARN=arn:aws:acm:us-east-1:510645120987:certificate/9e8615de-927e-427c-8e44-31e980de1de5
 
 sam deploy \
   --template-file stack.yml \
-  --stack-name team-1-wbla-practeraco-de \
-  --region us-east-1 \
-  --resolve-s3 \
-  --capabilities CAPABILITY_IAM \
+  --stack-name team-1-skillsbuild-cybersec-practeraco-de \
   --debug \
-  --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI" "SubDomainName=team-1-wbla.cybersec.practeraco.de"
+  --parameter-overrides "AppImageUrl=$APP_URI" "NginxImageUrl=$NGNIX_URI TeamName=team-1 SubDomainName=team-1-skillsbuild.cybersec.practeraco.de SSLCertificateArn=$CERTIFICATE_ARN"

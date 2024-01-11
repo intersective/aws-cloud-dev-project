@@ -54,10 +54,17 @@ Parameters:
     Type: String
     Default: zap.cybersec.practeraco.de
     Description: The subdomain name (e.g., app.example.com)
-  SSLCertificate:
+  SSLCertificateArn:
     Type: String
-    Default: arn:aws:acm:us-east-1:510645120987:certificate/9e8615de-927e-427c-8e44-31e980de1de5
-    Description: The root domain name (e.g., example.com)
+    Description: ARN of the existing certificate.
+  TeamName:
+    Type: String
+    Default: "team-1"
+    Description: Team name
+  Client:
+    Type: String
+    Default: "skillsbuild"
+    Description: WBLA or IBM
 
 Resources:
   # SSL Certificate for the subdomain
@@ -93,6 +100,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      TaskRoleArn: !Ref ECSTaskExecutionRole
       ContainerDefinitions:
         # NGINX sidecar for the task
         - Name: nginx
@@ -149,6 +157,7 @@ Resources:
         MinimumHealthyPercent: 75
       DesiredCount: !Ref DesiredCount
       TaskDefinition: !Ref TaskDefinition
+      EnableExecuteCommand: true
       LoadBalancers:
         - ContainerName: nginx
           ContainerPort: !Ref ContainerPort
@@ -166,6 +175,7 @@ Resources:
   ServiceTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
+      Name: !Sub ${TeamName}-${Client}-target-group
       HealthCheckIntervalSeconds: 6
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
@@ -176,6 +186,8 @@ Resources:
       Protocol: HTTP
       UnhealthyThresholdCount: 10
       VpcId: !Ref VpcId
+      Matcher:
+        HttpCode: 200-499
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: 0
@@ -194,6 +206,7 @@ Resources:
   PublicLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
+      Name: !Sub ${TeamName}-${Client}-alb
       Scheme: internet-facing
       LoadBalancerAttributes:
       - Key: idle_timeout.timeout_seconds
@@ -202,6 +215,21 @@ Resources:
       SecurityGroups:
         - !Ref PublicLoadBalancerSG
 
+  HTTPlistener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - Type: "redirect"
+          RedirectConfig:
+            Protocol: "HTTPS"
+            Port: 443
+            Host: "#{host}"
+            Path: "/#{path}"
+            Query: "#{query}"
+            StatusCode: "HTTP_301"
+      LoadBalancerArn: !Ref PublicLoadBalancer
+      Port: 80
+      Protocol: "HTTP"
 
   PublicLoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -216,7 +244,7 @@ Resources:
       Port: 443
       Protocol: HTTPS
       Certificates:
-        - CertificateArn: !Ref SSLCertificate
+        - CertificateArn: !Ref SSLCertificateArn
 
   # Open up the service's security group to traffic originating
   # from the security group of the load balancer.

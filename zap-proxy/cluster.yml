@@ -1,6 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Empty ECS cluster that has no EC2 instances. It is designed
              to be used with AWS Fargate serverless capacity
+Parameters:
+  TeamName:
+    Type: String
+    Default: "team-1"
+    Description: Team name
+  Client:
+    Type: String
+    Default: "skillsbuild"
+    Description: WBLA or IBM
 
 Resources:
   # This is authorizes ECS to manage resources on your
@@ -14,6 +23,7 @@ Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
+      ClusterName: !Sub ${TeamName}-${Client}-cybersecurity-cluster
       ClusterSettings:
         - Name: containerInsights
           Value: enabled
@@ -23,6 +33,7 @@ Resources:
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ${TeamName}-${Client}-cybersecurity-role
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -35,6 +46,24 @@ Resources:
               StringEquals:
                 aws:SourceAccount: !Ref AWS::AccountId
       Path: /
+      Policies:
+        - PolicyName: ssm-ssh-access
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'ssmmessages:CreateControlChannel'
+              - 'ssmmessages:CreateDataChannel'
+              - 'ssmmessages:OpenControlChannel'
+              - 'ssmmessages:OpenDataChannel'
+              Resource: '*' 
+        - PolicyName: ecs-execute-command
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'ecs:ExecuteCommand'
+              Resource: '*'  
 
       # This role enables basic features of ECS. See reference:
       # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/security-iam-awsmanpol.html#security-iam-awsmanpol-AmazonECSTaskExecutionRolePolicy

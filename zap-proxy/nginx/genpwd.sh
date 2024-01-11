@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o pipefail
+
 # Check if the number of entries is provided
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <number_of_entries>"
@@ -25,7 +27,7 @@ fi
 
 # Function to generate a random password
 generate_password() {
-    LC_ALL=C < /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()-_=+[]{}|;:,.<>/?' | head -c10
+    LC_ALL=C < /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()-_=+[]{}|;:,.<>/?' | head -c10 
 }
 
 # Generate entries
@@ -35,6 +37,8 @@ do
     PASSWORD=$(generate_password)
     htpasswd -bB $HTPASSWD_FILE $USERNAME $PASSWORD
     echo "Added $USERNAME with password $PASSWORD"
+
+    echo ""$USERNAME":"$PASSWORD"" >> .accounts
 done
 
 echo "Generated $NUM_ENTRIES entries in $HTPASSWD_FILE"
