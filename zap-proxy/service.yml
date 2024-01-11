@@ -79,15 +79,15 @@ Resources:
   #       - !Ref RootDomainName
 
 #  Route 53 record set to point the subdomain to the ELB
-  SubDomainRecordSet:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneName: !Sub "${RootDomainName}."
-      Name: !Ref SubDomainName
-      Type: A
-      AliasTarget:
-        HostedZoneId: !GetAtt "PublicLoadBalancer.CanonicalHostedZoneID"
-        DNSName: !GetAtt "PublicLoadBalancer.DNSName"
+  # SubDomainRecordSet:
+  #   Type: AWS::Route53::RecordSet
+  #   Properties:
+  #     HostedZoneName: !Sub "${RootDomainName}."
+  #     Name: !Ref SubDomainName
+  #     Type: A
+  #     AliasTarget:
+  #       HostedZoneId: !GetAtt "PublicLoadBalancer.CanonicalHostedZoneID"
+  #       DNSName: !GetAtt "PublicLoadBalancer.DNSName"
 
   # The task definition. This is a simple metadata description of what
   # container(s) to run, and what resource requirements the task has
@@ -265,60 +265,60 @@ Resources:
   NginxLogGroup:
     Type: AWS::Logs::LogGroup
 
-  # CyberSecurityCDN:
-  #   Type: AWS::CloudFront::Distribution
-  #   Properties:
-  #     DistributionConfig:
-  #       Aliases:
-  #         - !Sub ${SubDomainName}
-  #       Comment: !Sub "Cloudfront Origin identity for ${SubDomainName}"
-  #       DefaultCacheBehavior:
-  #         AllowedMethods:
-  #           - GET
-  #           - HEAD
-  #           - OPTIONS
-  #           - PUT
-  #           - POST
-  #           - PATCH
-  #           - DELETE
-  #         CachedMethods:
-  #           - HEAD
-  #           - GET
-  #           - OPTIONS
-  #         Compress: true
-  #         DefaultTTL: 0 # in seconds
-  #         ForwardedValues:
-  #           Cookies:
-  #             Forward: all
-  #           QueryString: true
-  #           Headers: ["*"]
-  #         MaxTTL: 0 # in seconds
-  #         MinTTL: 0 # in seconds
-  #         TargetOriginId: !Sub ${SubDomainName}
-  #         ViewerProtocolPolicy: "redirect-to-https"
-  #       Enabled: true
-  #       HttpVersion: http2
-  #       IPV6Enabled: true
-  #       Origins:
-  #         - Id: !Sub ${SubDomainName}
-  #           DomainName: !GetAtt "PublicLoadBalancer.DNSName"
-  #           CustomOriginConfig:
-  #             HTTPPort: 80
-  #             HTTPSPort: 443
-  #             OriginProtocolPolicy: https-only
-  #       PriceClass: "PriceClass_All"
-  #       ViewerCertificate:
-  #         AcmCertificateArn: !Ref SSLCertificateArn
-  #         MinimumProtocolVersion: "TLSv1.2_2021" # OLD VALUE:'TLSv1.2_2019'
-  #         SslSupportMethod: "sni-only"
+  CyberSecurityCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Sub ${SubDomainName}
+        Comment: !Sub "Cloudfront Origin identity for ${SubDomainName}"
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+          Compress: true
+          DefaultTTL: 0 # in seconds
+          ForwardedValues:
+            Cookies:
+              Forward: all
+            QueryString: true
+            Headers: ["*"]
+          MaxTTL: 0 # in seconds
+          MinTTL: 0 # in seconds
+          TargetOriginId: !Sub ${SubDomainName}
+          ViewerProtocolPolicy: "redirect-to-https"
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - Id: !Sub ${SubDomainName}
+            DomainName: !GetAtt "PublicLoadBalancer.DNSName"
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        PriceClass: "PriceClass_All"
+        ViewerCertificate:
+          AcmCertificateArn: !Ref SSLCertificateArn
+          MinimumProtocolVersion: "TLSv1.2_2021" # OLD VALUE:'TLSv1.2_2019'
+          SslSupportMethod: "sni-only"
 
-  # Route53RecordV2:
-  #   Type: "AWS::Route53::RecordSetGroup"
-  #   Properties:
-  #     HostedZoneName: !Sub "${RootDomainName}."
-  #     RecordSets:
-  #       - Name: !Sub ${SubDomainName}
-  #         Type: CNAME
-  #         TTL: "3200"
-  #         ResourceRecords:
-  #           - !GetAtt "CyberSecurityCDN.DomainName"
+  Route53RecordV2:
+    Type: "AWS::Route53::RecordSetGroup"
+    Properties:
+      HostedZoneName: !Sub "${RootDomainName}."
+      RecordSets:
+        - Name: !Sub ${SubDomainName}
+          Type: CNAME
+          TTL: "3200"
+          ResourceRecords:
+            - !GetAtt "CyberSecurityCDN.DomainName"
