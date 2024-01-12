@@ -26,9 +26,10 @@ deploy_stack() {
 }
 
 # Set NGINX_IMAGE_URI and other variables here
-export NGNIX_URI=510645120987.dkr.ecr.us-east-1.amazonaws.com/nginx
+export NGNIX_URI=510645120987.dkr.ecr.us-east-1.amazonaws.com/nginx:latest
 export CERTIFICATE_ARN=arn:aws:acm:us-east-1:510645120987:certificate/9e8615de-927e-427c-8e44-31e980de1de5
-export APP_URI=ghcr.io/zaproxy/zaproxy:stable
+export APP_URI=510645120987.dkr.ecr.us-east-1.amazonaws.com/zaproxy:latest
+
 
 # Teams for WBLA
 for ((i=1; i<=10; i++)); do
@@ -41,13 +42,13 @@ for ((i=1; i<=10; i++)); do
     deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName"
 done
 
-# Teams for IBM
-for ((i=1; i<=10; i++)); do
-    TeamName="team-$i"
-    Client="ibm"
-    SubDomainName="$TeamName-$Client.cybersec.practeraco.de"
-    StackName="$TeamName-$Client"
-    RootDomainName="cybersec.practeraco.de"
+# # Teams for IBM
+# for ((i=1; i<=10; i++)); do
+#     TeamName="team-$i"
+#     Client="ibm"
+#     SubDomainName="$TeamName-$Client.cybersec.practeraco.de"
+#     StackName="$TeamName-$Client"
+#     RootDomainName="cybersec.practeraco.de"
 
-    deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName"
-done
+#     deploy_stack "$TeamName" "$Client" "$SubDomainName" "$StackName" "$RootDomainName"
+# done
