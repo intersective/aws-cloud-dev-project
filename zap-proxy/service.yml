@@ -126,6 +126,9 @@ Resources:
               HostPort: 8080
           Command:
             - zap-webswing.sh
+          Environment:
+            - Name: ZAP_PORT
+              Value: 8080
           LogConfiguration:
             LogDriver: "awslogs"
             Options:
