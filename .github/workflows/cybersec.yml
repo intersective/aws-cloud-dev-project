@@ -2,6 +2,8 @@
 name: 'Activate Shutdown or Restart CyberSec Infra'
 
 on:
+  push:
+    - feat/workflow
   workflow_dispatch:
 
 jobs:
