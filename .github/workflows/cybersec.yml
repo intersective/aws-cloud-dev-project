@@ -36,10 +36,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Configure AWS credentials pcloud CyberSec
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS Credentials pcloud CyberSec
+        uses: ./.github/actions/aws-oidc
         with:
-          aws-access-key-id: ${{ secrets.CYBERSEC_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.CYBERSEC_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${{ env.CYBERSEC }}:role/cybersec-github-action-assume-role-dev
+          region: ${{ env.REGION }}
+        env:
+          CYBERSEC: "510645120987"
       - run: aws s3 ls
