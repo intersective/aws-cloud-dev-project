@@ -37,6 +37,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
       - name: Configure AWS Credentials pcloud CyberSec
         uses: ./.github/actions/aws-oidc
         with:
@@ -47,5 +50,6 @@ jobs:
           REGION: us-east-1
       - name: Activate Infra
         if: ${{ github.event.inputs.ACTION == 'activate' }}
+        working-directory: ./zap-proxy
         run: |
-          bash zap-proxy/deploy-ci.sh
+          bash deploy-ci.sh
