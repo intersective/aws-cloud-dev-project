@@ -28,6 +28,7 @@ on:
 jobs:
   target:
     runs-on: ubuntu-latest
+    permissions: write-all
     env:
       ACTION: ${{ github.event.inputs.ACTION }}
       CLIENT: ${{ github.event.inputs.CLIENT }}
@@ -43,4 +44,5 @@ jobs:
           region: ${{ env.REGION }}
         env:
           CYBERSEC: "510645120987"
+          REGION: us-east-1
       - run: aws s3 ls
