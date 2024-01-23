@@ -43,9 +43,9 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.CYBERSEC }}:role/cybersec-github-action-assume-role-dev
           region: ${{ env.REGION }}
         env:
-          CYBERSEC:  ${{ secrets.CYBERSEC }}
+          CYBERSEC: ${{ secrets.CYBERSEC }}
           REGION: us-east-1
       - name: Activate Infra
-        if: github.event.inputs.ACTION == activate
+        if: github.event.inputs.ACTION == "activate"
         run: |
           bash zap-proxy/deploy-ci.sh
