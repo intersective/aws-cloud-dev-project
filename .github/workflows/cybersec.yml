@@ -53,7 +53,7 @@ jobs:
         working-directory: ./zap-proxy
         run: |
           bash deploy-ci.sh
-      - name: Activate Infra
+      - name: Shutdown Infra
         if: ${{ github.event.inputs.ACTION == 'shutdown' }}
         run: |
           aws cloudformation delete-stack --stack-name "$TEAM_NAME"-"$CLIENT"
