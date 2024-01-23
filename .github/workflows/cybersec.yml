@@ -57,3 +57,8 @@ jobs:
         if: ${{ github.event.inputs.ACTION == 'shutdown' }}
         run: |
           aws cloudformation delete-stack --stack-name "$TEAM_NAME"-"$CLIENT"
+      - name: Shutdown Infra
+        if: ${{ github.event.inputs.ACTION == 'restart' }}
+        run: |
+          aws ecs update-service --cluster "$TEAM_NAME"-"$CLIENT"-cybersecurity-cluster --service web --force-new-deployment
+
