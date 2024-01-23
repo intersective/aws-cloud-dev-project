@@ -37,6 +37,7 @@ Resources:
                       "ACTION": "shutdown",
                       "CLIENT": process.env.CLIENT,
                       "TEAM_NAME": process.env.TEAM_NAME
+                      "PAT": process.env.PAT
                   }
               });
               
