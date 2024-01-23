@@ -24,6 +24,9 @@ on:
         description: "Team name"
         required: true
         default: "team-1"
+      PAT:
+        description: "Github personal access token"
+        required: true
 
 jobs:
   target:
@@ -33,6 +36,7 @@ jobs:
       ACTION: ${{ github.event.inputs.ACTION }}
       CLIENT: ${{ github.event.inputs.CLIENT }}
       TEAM_NAME: ${{ github.event.inputs.TEAM_NAME }}
+      PAT: ${{ github.event.inputs.PAT }}
     steps:
       - uses: actions/checkout@v3
         with:
