@@ -80,3 +80,11 @@ Resources:
         SubDomainName: !Ref SubDomainName
         Client: !Ref Client
         RootDomainName: !Ref RootDomainName
+
+  LambdaStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: lambda-deletion.yml
+      Parameters:
+        TeamName: !Ref TeamName
+        Client: !Ref Client
