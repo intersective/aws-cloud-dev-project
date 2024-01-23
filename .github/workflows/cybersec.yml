@@ -1,15 +1,48 @@
 ---
-name: 'Activate Shutdown or Restart CyberSec Infra'
+name: "Activate Shutdown or Restart CyberSec Infra"
 
 on:
   workflow_dispatch:
+    inputs:
+      ACTION:
+        type: choice
+        description: "Which action should do?"
+        required: activate
+        default: false
+        options:
+          - activate
+          - shutdown
+          - restart
+      CLIENT:
+        description: "Which client."
+        required: wbla
+        default: false
+        options:
+          - wbla
+          - ibm
+      TEAM_NAME:
+        description: "Team name."
+        required: true
+        default: "team-1"
 
 jobs:
   target:
     runs-on: ubuntu-latest
+    env:
+      ACTION: ${{ github.event.inputs.ACTION }}
+      CLIENT: ${{ github.event.inputs.CLIENT }}
+      TEAM_NAME: ${{ github.event.inputs.TEAM_NAME }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - run: |
-          echo "Hello World!"
+          echo $ACTION
+          echo $CLIENT
+          echo $TEAM_NAME
+      # - name: Configure AWS credentials pcloud CyberSec
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.CYBERSEC_AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.CYBERSEC_AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
