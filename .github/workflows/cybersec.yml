@@ -45,5 +45,7 @@ jobs:
         env:
           CYBERSEC:  ${{ secrets.CYBERSEC }}
           REGION: us-east-1
-      - run: |
+      - name: Activate Infra
+        if: github.event.inputs.ACTION == activate
+        run: |
           bash zap-proxy/deploy-ci.sh
