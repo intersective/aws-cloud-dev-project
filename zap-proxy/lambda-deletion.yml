@@ -95,6 +95,13 @@ Resources:
                   - logs:*
                 Resource: "arn:aws:logs:*:*:*"
 
+  StackCreationTimeParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: 'StackCreationTime'
+      Type: 'String'
+      Value: !Sub '${AWS::Region}/${AWS::StackName}/${AWS::StackId}'
+      
 Outputs:
   LambdaFunctionArn:
     Description: The ARN of the Lambda function
