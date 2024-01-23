@@ -14,7 +14,6 @@ deploy_stack() {
         --s3-bucket cybersec-deployment-files \
         --debug \
         --capabilities CAPABILITY_NAMED_IAM \
-        --profile default \
         --region us-east-1 \
         --parameter-overrides "AppImageUrl=$APP_URI" "Client=$Client" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName"
 
