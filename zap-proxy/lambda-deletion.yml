@@ -10,6 +10,9 @@ Parameters:
     Type: String
     Default: "skillsbuild"
     Description: WBLA or IBM
+  PAT:
+    Type: String
+    Description: Github PAT
 
 Resources:
   DeleteStackLambda:
@@ -22,6 +25,7 @@ Resources:
         Variables:
           TEAM_NAME: !Ref TeamName
           CLIENT: !Ref Client
+          PAT: !Ref PAT
       Code:
         ZipFile: |
           const https = require('https');
@@ -42,7 +46,7 @@ Resources:
                   path: '/repos/intersective/aws-cloud-dev-project/actions/workflows/83200993/dispatches',
                   method: 'POST',
                   headers: {
-                      'Authorization': 'Bearer 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',
+                      'Authorization': `Bearer ${process.env.PAT}`,
                       'X-GitHub-Api-Version': '2022-11-28',
                       'Accept': 'application/vnd.github+json'
                   }

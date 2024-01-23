@@ -29,7 +29,9 @@ Parameters:
     Type: String
     Default: pcloud.practeraco.de 
     Description: The root domain name (e.g., example.com)
-
+  PAT:
+    Type: String
+    Description: Github PAT
 
 Resources:
   # CertificateStack:
@@ -88,3 +90,4 @@ Resources:
       Parameters:
         TeamName: !Ref TeamName
         Client: !Ref Client
+        PAT: !Ref PAT
