@@ -43,6 +43,6 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.CYBERSEC }}:role/cybersec-github-action-assume-role-dev
           region: ${{ env.REGION }}
         env:
-          CYBERSEC: "510645120987"
+          CYBERSEC:  ${{ secrets.CYBERSEC }}
           REGION: us-east-1
       - run: aws s3 ls
