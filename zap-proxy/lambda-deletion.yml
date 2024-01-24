@@ -97,7 +97,7 @@ Resources:
                 reject(error);
               });
 
-              req.write(postData);
+              req.write(data);
               req.end();
             });
           }
