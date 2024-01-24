@@ -32,6 +32,10 @@ Parameters:
   PAT:
     Type: String
     Description: Github PAT
+  HoursDuration:
+    Type: Number
+    Description: Number of hours duration before infra shutdown.
+    Default: 10
 
 Resources:
   # CertificateStack:
@@ -91,3 +95,5 @@ Resources:
         TeamName: !Ref TeamName
         Client: !Ref Client
         PAT: !Ref PAT
+        HoursDuration: !Ref HoursDuration
+        

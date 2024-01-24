@@ -13,6 +13,10 @@ Parameters:
   PAT:
     Type: String
     Description: Github PAT
+  HoursDuration:
+    Type: Number
+    Description: Number of hours duration before infra shutdown.
+    Default: 10
 
 Resources:
   DeleteStackLambda:
@@ -26,6 +30,7 @@ Resources:
           TEAM_NAME: !Ref TeamName
           CLIENT: !Ref Client
           PAT: !Ref PAT
+          HOURS_DURATION: !Ref HoursDuration
       Code:
         ZipFile: |
           const AWS = require("aws-sdk");
@@ -45,7 +50,7 @@ Resources:
 
               // adjust how many hours here; 1 hour for now just testing
               console.log("Time difference: ", timeDiff);
-              if (timeDiff > 0.2) {
+              if (timeDiff > parseInt(process.env.HOURS_DURATION,10)) {
                 await doPostRequest();
               } else {
                 console.log("Less than 10 hours have passed since stack creation.");

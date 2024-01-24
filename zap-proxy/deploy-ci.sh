@@ -15,7 +15,7 @@ deploy_stack() {
         --debug \
         --capabilities CAPABILITY_NAMED_IAM \
         --region us-east-1 \
-        --parameter-overrides "AppImageUrl=$APP_URI" "Client=$Client" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName PAT=$PAT"
+        --parameter-overrides "AppImageUrl=$APP_URI" "Client=$Client" "NginxImageUrl=$NGNIX_URI TeamName=$TeamName SubDomainName=$SubDomainName SSLCertificateArn=$CERTIFICATE_ARN RootDomainName=$RootDomainName PAT=$PAT HoursDuration=$HoursDuration"
 
     # Check the deployment status
     if [ $? -ne 0 ]; then

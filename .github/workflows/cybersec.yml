@@ -14,6 +14,7 @@ on:
           - shutdown
           - restart
       CLIENT:
+        type: choice
         description: "Which client"
         required: true
         default: wbla
@@ -21,12 +22,19 @@ on:
           - wbla
           - ibm
       TEAM_NAME:
+        type: string
         description: "Team name"
         required: true
         default: "team-1"
       PAT:
+        type: string
         description: "Github personal access token"
         required: true
+      HoursDuration:
+        type: string
+        description: "hours duration before infra shutdown"
+        required: true
+        default: '10'
 
 jobs:
   target:
@@ -37,6 +45,7 @@ jobs:
       CLIENT: ${{ github.event.inputs.CLIENT }}
       TEAM_NAME: ${{ github.event.inputs.TEAM_NAME }}
       PAT: ${{ github.event.inputs.PAT }}
+      HoursDuration: ${{ github.event.inputs.HoursDuration }}
     steps:
       - uses: actions/checkout@v3
         with:
