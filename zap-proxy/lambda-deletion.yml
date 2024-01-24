@@ -101,7 +101,6 @@ Resources:
             });
           }
 
-
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -123,13 +122,23 @@ Resources:
                   - logs:*
                 Resource: "arn:aws:logs:*:*:*"
 
-  MyScheduledEvent:
+  CloudWatchEventRule:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: "rate(1 hour)"
+      Description: "Trigger Lambda on a schedule"
+      ScheduleExpression: "rate(5 minutes)" # Triggers every 5 minutes
+      State: ENABLED
       Targets:
         - Arn: !GetAtt DeleteStackLambda.Arn
-          Id: "DeleteStackLambda"
+          Id: "DeleteStackLambdaTarget"
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteStackLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CloudWatchEventRule.Arn
 
 Outputs:
   LambdaFunctionArn:
