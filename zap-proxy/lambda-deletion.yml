@@ -45,7 +45,7 @@ Resources:
 
               // adjust how many hours here; 1 hour for now just testing
               console.log("Time difference: ", timeDiff);
-              if (timeDiff > 1) {
+              if (timeDiff > 0.2) {
                 await doPostRequest();
               } else {
                 console.log("Less than 10 hours have passed since stack creation.");
