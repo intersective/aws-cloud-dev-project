@@ -44,6 +44,7 @@ Resources:
               const timeDiff = (currentTime - stackCreationTime) / (1000 * 60 * 60);
 
               // adjust how many hours here; 1 hour for now just testing
+              console.log("Time difference: ", timeDiff);
               if (timeDiff > 1) {
                 await doPostRequest();
               } else {
