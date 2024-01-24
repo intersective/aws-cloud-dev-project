@@ -112,15 +112,8 @@ Resources:
               Service:
                 - lambda.amazonaws.com
             Action: "sts:AssumeRole"
-      Policies:
-        - PolicyName: LambdaExecutionPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:*
-                Resource: "arn:aws:logs:*:*:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
   CloudWatchEventRule:
     Type: AWS::Events::Rule
