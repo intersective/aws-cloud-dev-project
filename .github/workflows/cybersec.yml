@@ -1,0 +1,77 @@
+---
+name: "Activate Shutdown or Restart CyberSec Infra"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ACTION:
+        type: choice
+        description: "Which action should do"
+        required: true
+        default: activate
+        options:
+          - activate
+          - shutdown
+          - restart
+      CLIENT:
+        type: choice
+        description: "Which client"
+        required: true
+        default: wbla
+        options:
+          - wbla
+          - ibm
+      TEAM_NAME:
+        type: string
+        description: "Team name"
+        required: true
+        default: "team-1"
+      PAT:
+        type: string
+        description: "Github personal access token"
+        required: true
+      HoursDuration:
+        type: string
+        description: "hours duration before infra shutdown"
+        required: true
+        default: '10'
+
+jobs:
+  target:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    env:
+      ACTION: ${{ github.event.inputs.ACTION }}
+      CLIENT: ${{ github.event.inputs.CLIENT }}
+      TEAM_NAME: ${{ github.event.inputs.TEAM_NAME }}
+      PAT: ${{ github.event.inputs.PAT }}
+      HoursDuration: ${{ github.event.inputs.HoursDuration }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - name: Configure AWS Credentials pcloud CyberSec
+        uses: ./.github/actions/aws-oidc
+        with:
+          role-to-assume: arn:aws:iam::${{ env.CYBERSEC }}:role/cybersec-github-action-assume-role-dev
+          region: ${{ env.REGION }}
+        env:
+          CYBERSEC: ${{ secrets.CYBERSEC }}
+          REGION: us-east-1
+      - name: Activate Infra
+        if: ${{ github.event.inputs.ACTION == 'activate' }}
+        working-directory: ./zap-proxy
+        run: |
+          bash deploy-ci.sh
+      - name: Shutdown Infra
+        if: ${{ github.event.inputs.ACTION == 'shutdown' }}
+        run: |
+          aws cloudformation delete-stack --stack-name "$TEAM_NAME"-"$CLIENT"
+      - name: Restart Infra
+        if: ${{ github.event.inputs.ACTION == 'restart' }}
+        run: |
+          aws ecs update-service --cluster "$TEAM_NAME"-"$CLIENT"-cybersecurity-cluster --service web --force-new-deployment
+
